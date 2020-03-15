@@ -8,8 +8,9 @@ Simple Usage Sample:
 
 .. code-block:: python
               
-    # Direct usage with In-process registering, if pip install is undesirable
+    # Direct usage of the dialect with In-process registering, if not pip installed
     sa.dialects.registry.register("pysqream-sqlalchemy.dialect", "dialect", "SqreamDialect") 
+    
     conn_str = ""pysqream-sqlalchemy+dialect://sqream:sqream@localhost:5001/master?use_ssl=True"                                                  
     engine = create_engine(conn_str, echo = print_echo) 
 
@@ -17,7 +18,5 @@ Simple Usage Sample:
     metadata.bind = engine
 
     res = engine.execute('create or replace table test (ints int)')
-    res = engine.execute('insert into test values (5)')
+    res = engine.execute('insert into test values (5), (6)')
     res = engine.execute('select * from test')
-    assert(all(row[0] == 5 for row in res))
-
