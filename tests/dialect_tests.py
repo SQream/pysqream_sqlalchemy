@@ -8,12 +8,8 @@ sys.path.append(sys.path[0].replace('\\', '/').rsplit('/', 1)[0] + '/pysqream')
 from sqlalchemy import orm, create_engine, MetaData, Table, Column, select, insert, cast
 from sqlalchemy.schema import CreateTable   # Print ORM table DDLs
 
-# import alembic
 from alembic.runtime.migration import MigrationContext
 from alembic.operations import Operations
-# from alembic.script import ScriptDirectory
-# from alembic.config import Config
-# from alembic.ddl.impl import DefaultImpl
 
 import sqlalchemy as sa, pandas as pd
 from time import time
@@ -44,7 +40,6 @@ metadata.bind = engine
 
 def sqlalchemy_tests():
 
-    # '''
     print (f'SQLAlchemy direct query tests')
     # Test 0 - as bestowed upon me by Yuval. Using the URL object directly instead of a connection string
     manual_conn_str = sa.engine.url.URL(
@@ -60,7 +55,6 @@ def sqlalchemy_tests():
     res = engine.execute('insert into kOko values (5)')
     res = engine.execute('select * from kOko')
     assert(all(row[0] == 5 for row in res))
-    # '''
 
     print (f'SQLAlchemy ORM tests')
     # ORM queries - test that correct SQream queries (SQL text strings) are
@@ -85,13 +79,10 @@ def sqlalchemy_tests():
         orm_table.drop()
     
     orm_table.create()
-    # metadata.create_all(engine, tables=(orm_table,))    
 
     # Insert into table
     values = [(True, 77, 777, 7777, 77777, 7.0, 7.77777777, date(2012, 11, 23), datetime(2012, 11, 23, 16, 34, 56), 'bla', 'bla2'),] * 2 
     orm_table.insert().values(values).execute()
-    # print(repr(metadata.tables['koko']))
-    # print (orm_table.columns.keys()[0])
     
     # Validate results
     res = engine.execute(orm_table.select()).fetchall()
@@ -145,7 +136,6 @@ def pandas_tests():
     
     res = pd.read_sql('select * from "kOko3"', conn_str)
 
-    # print(res)
     assert ((res == df).eq(True).all()[0])
 
 
