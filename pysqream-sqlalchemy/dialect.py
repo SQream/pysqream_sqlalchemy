@@ -3,9 +3,6 @@ SQLAlchemy refers to SQL variants as dialects. An SQLAlchemy Dialect object
 contains information about specific behaviors of the backend, keywords etc.
 It also references to the default underlying DB-API implementation (aka Driver) in use. 
 
-Created -       27/08/2017
-Last modified - 04/03/2020
-
 Usage:
 - Pop a Python shell from sqream_dialect.py's folder, or add it to Python's import path
 
@@ -21,7 +18,7 @@ registry.register("sqream.sqream_dialect", "sqream_dialect", "SqreamDialect")
 
 engine = create_engine("sqream+sqream_dialect://sqream:sqream@localhost:5000/master") 
 
-# As bestowed upon me by Yuval
+# Check 1, 2
 res = engine.execute('select 1')
 
 for row in res:
@@ -75,78 +72,6 @@ def printdbg(message, dbg = False):
         print (message)
 
 
-class SqreamExecutionContext(DefaultExecutionContext):
-
-    '''
-    def __init__(self, dialect, connection, dbapi_connection, compiled_ddl):
-        super(SqreamExecutionContext, self).__init__(dialect, connection, dbapi_connection, compiled_ddl)
-    '''
-
-    executemany = True
-
-    def __init__(self, **kwargs):
-        super(SqreamExecutionContext, self).__init__(**kwargs)
-
-        self.cursor = self.create_cursor() # root_connection
-
-    def _setup_crud_result_proxy(self):
-        if self.isinsert and not self.executemany:
-            if (
-                not self._is_implicit_returning
-                and not self.compiled.inline
-                and self.dialect.postfetch_lastrowid
-            ):
-
-                self._setup_ins_pk_from_lastrowid()
-
-            elif not self._is_implicit_returning:
-                self._setup_ins_pk_from_empty()
-
-        result = self.get_result_proxy()
-        if self.isinsert:
-            if self._is_implicit_returning:
-                row = result.fetchone()
-                self.returned_defaults = row
-                self._setup_ins_pk_from_implicit_returning(row)
-                result._soft_close()
-                result._metadata = None
-            elif not self._is_explicit_returning:
-                result._soft_close()
-                result._metadata = None
-        elif self.isupdate and self._is_implicit_returning:
-            row = result.fetchone()
-            self.returned_defaults = row
-            result._soft_close()
-            result._metadata = None
-        elif result._metadata is None:
-            # no results, get rowcount
-            # (which requires open cursor on some drivers
-            # such as kintersbasdb, mxodbc)
-            result.rowcount
-            
-            if not result._soft_closed:
-                result._soft_closed = True
-                result.cursor.close()
-                # '''
-                if result._autoclose_connection:
-                    result.connection.close()
-                # '''
-
-
-        return result
-
-
-'''
-ischema_names = {
-    'BOOLEAN': Boolean,
-    'TINYINT' : TINYINT,
-    'DATE': Date,
-    'DATETIME': DateTime,
-
-}
-'''
-
-
 class TINYINT(TINYINT):
     ''' Allows describing tables via the ORM mechanism. Complemented in 
         SqreamTypeCompiler '''  
@@ -166,21 +91,11 @@ class SqreamTypeCompiler(compiler.GenericTypeCompiler):
     
         return "TINYINT"
 
-    '''
-    def visit_large_binary(self, type_, **kw):
-
-        if type_.length == 1:
-            return "TINYINT"
-        
-        return self.visit_BLOB(type_)
-    # '''
-    
 
 
 class SqreamSQLCompiler(compiler.SQLCompiler):
     ''' Overriding visit_insert behavior of generating SQL with multiple 
        (?,?) clauses for ORM inserts with parameters  '''
-    
 
     def visit_insert(self, insert_stmt, asfrom=False, **kw):
             toplevel = not self.stack
@@ -297,7 +212,6 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
 
 
 
-
 class SqreamDialect(DefaultDialect):
     ''' dbapi() classmethod, get_table_names() and get_columns() seem to be the 
         important ones for Apache Superset. get_pk_constraint() returning an empty
@@ -307,12 +221,9 @@ class SqreamDialect(DefaultDialect):
     default_paramstyle = 'qmark'
     supports_native_boolean = True
     supports_multivalues_insert = True
-    # preparer = 
-    # ddl_compiler = 
+    
     type_compiler = SqreamTypeCompiler
     statement_compiler = SqreamSQLCompiler
-    # execution_ctx_cls = SqreamExecutionContext
-    # ischema_names = ischema_names
     Tinyint = TINYINT
 
     def __init__(self, **kwargs):
@@ -332,7 +243,6 @@ class SqreamDialect(DefaultDialect):
             import dbapi
             
         return dbapi
-        # return import_module('wrapper')
 
 
     def initialize(self, connection):
@@ -402,9 +312,6 @@ class SqreamDialect(DefaultDialect):
 
 
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
-        ''' One of the unimplemented functions in Alc's engines/interfaces.py. 
-            Apparently needs an empty implememntation at the least for reflecting
-            a table '''
         return {}
 
 
