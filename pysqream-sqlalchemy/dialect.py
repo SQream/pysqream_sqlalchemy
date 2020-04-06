@@ -26,7 +26,8 @@ for row in res:
 
 '''
 
-from importlib import import_module    # for importing and returning the module
+from __future__ import annotations
+from importlib import import_module, resources    # for importing and returning the module
 from sqlalchemy.engine.default import DefaultDialect, DefaultExecutionContext
 from sqlalchemy.types import Boolean, LargeBinary, SmallInteger, Integer, BigInteger, Float, Date, DateTime, String, Unicode, UnicodeText
 from sqlalchemy.dialects.mysql import TINYINT
@@ -45,6 +46,7 @@ else:
 
 
 registry.register("pysqream", "dialect", "SqreamDialect")
+
 
 
 sqream_to_alchemy_types = {
@@ -174,6 +176,9 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
         elif not crud_params and supports_default_values:
             text += " DEFAULT VALUES"
 
+        # This part would originally generate an insert statement such as
+        # `insert into table test values (?,?), (?,?), (?,?)` which sqream
+        # does not support
         # <Overriding part> - money is in crud_params[0]
         elif insert_stmt._has_multi_parameters:
             insert_single_values_expr = ", ".join([c[1] for c in crud_params[0]])
@@ -223,7 +228,7 @@ class SqreamDialect(DefaultDialect):
     Tinyint = TINYINT
 
     def __init__(self, **kwargs):
-        super(SqreamDialect, self).__init__(self, **kwargs)
+        super().__init__(**kwargs)
 
     @classmethod
     def dbapi(cls):
@@ -262,16 +267,22 @@ class SqreamDialect(DefaultDialect):
             when trying to add a new table to the sources'''
 
         query = "select get_ddl('{}')".format(table_name)
-        table_ddl = connection.execute(query).fetchall()[0][0].split('\n')
+        table_ddl = connection.execute(query).fetchall()[0][0].splitlines()
+
         schema = table_ddl[0].split()[2].split('.')[0]
         columns_meta = []
 
-        # 1st (0) entry is "create table", last 5 are closing parantheses and other jib
-        for col in table_ddl[1:-5]:
+        # 1st (0) entry is "create table", last 4 are closing parantheses and other jib
+        for col in table_ddl[1:-4]:
             col_meta = col.split()
             col_name = col_meta[0][1:-1]
-            col_type = sqream_to_alchemy_types[col_meta[1].split('(')[0]]
-            col_nullable = True if col_meta[2] == 'null' else False
+            try:
+                type_key = col_meta[1].split('(')[0]
+                col_type = sqream_to_alchemy_types[type_key]
+            except KeyError as e:
+                f'key {type_key} not found. Perhaps get_ddl() implementation change?'
+
+            col_nullable = col_meta[2] == 'null' 
             c = {
                 'name': col_name,
                 'type': col_type,
