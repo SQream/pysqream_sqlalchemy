@@ -5,7 +5,7 @@
 import os, sys
 sys.path.append(sys.path[0].replace('\\', '/').rsplit('/', 1)[0] + '/pysqream')
 
-from sqlalchemy import orm, create_engine, MetaData, Table, Column, select, insert, cast
+from sqlalchemy import orm, create_engine, MetaData, inspect, Table, Column, select, insert, cast
 from sqlalchemy.schema import CreateTable   # Print ORM table DDLs
 
 from alembic.runtime.migration import MigrationContext
@@ -51,10 +51,18 @@ def sqlalchemy_tests():
     assert(all(row[0] == 1 for row in res))
 
     # Simple direct Engine query - this passes the queries to the underlying DB-API
-    res = engine.execute('create or replace table kOko (ints int)')
-    res = engine.execute('insert into kOko values (5)')
+    res = engine.execute('create or replace table kOko ("iNts" int)')
+    res = engine.execute('insert into kOko values (1),(2),(3),(4),(5)')
     res = engine.execute('select * from kOko')
-    assert(all(row[0] == 5 for row in res))
+    # Using the underlying DB-API fetch() functions
+    assert (res.fetchone() == (1,))
+    assert (res.fetchmany(2) == [(2,), (3,)])
+    assert (res.fetchall() == [(4,), (5,)])
+
+    # Reflection test
+    inspector = inspect(engine)
+    inspected_cols = inspector.get_columns('kOko')
+    assert (inspected_cols[0]['name'] == 'iNts')
 
     print (f'SQLAlchemy ORM tests')
     # ORM queries - test that correct SQream queries (SQL text strings) are
@@ -66,7 +74,7 @@ def sqlalchemy_tests():
         Column('bools', sa.Boolean),
         Column('ubytes', sa.Tinyint),
         Column('shorts', sa.SmallInteger),
-        Column('ints', sa.Integer),
+        Column('iNts', sa.Integer),        
         Column('bigints', sa.BigInteger),
         Column('floats', sa.REAL),
         Column('doubles', sa.Float),
@@ -81,7 +89,7 @@ def sqlalchemy_tests():
     orm_table.create()
 
     # Insert into table
-    values = [(True, 77, 777, 7777, 77777, 7.0, 7.77777777, date(2012, 11, 23), datetime(2012, 11, 23, 16, 34, 56), 'bla', 'bla2'),] * 2 
+    values = [(True, 77, 777, 7777, 77777, 7.0, 7.77777777, date(2012, 11, 23), datetime(2012, 11, 23, 16, 34, 56), 'bla', 'בלה'),] * 2 
     orm_table.insert().values(values).execute()
     
     # Validate results
@@ -90,7 +98,7 @@ def sqlalchemy_tests():
 
     # Run a simple join query
     t2 = orm_table.alias()
-    joined = orm_table.join(t2, orm_table.columns.ints == t2.columns.ints, isouter = False)
+    joined = orm_table.join(t2, orm_table.columns.iNts == t2.columns.iNts, isouter = False)
     # orm_table.select().select_from(joined).execute()
     res = joined.select().execute().fetchall()
     assert(len(res) == 2 * len(values))
