@@ -322,3 +322,4 @@ class SqreamDialect(DefaultDialect):
 
     def do_rollback(self, connection):
         connection.rollback()
+

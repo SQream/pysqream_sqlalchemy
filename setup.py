@@ -8,8 +8,6 @@ setup_params = dict(
     description =      'SQLAlchemy dialect for SQreamDB', 
     long_description = open("README.rst", "r").read() + '\n\n',
     url=               "https://github.com/SQream/pysqream_sqlalchemy",
-    
-    packages =         ['pysqream_sqlalchemy'], 
     classifiers =      [
         "Programming Language :: Python :: 3.6",
         "License :: OSI Approved :: BSD License",
@@ -18,16 +16,18 @@ setup_params = dict(
     keywords = 'database sqlalchemy sqream sqreamdb',
 
     python_requires =  '>=3.6',
+    
     install_requires = ['sqlalchemy>=1.3.17',
                        'pysqream>=3.0.2'],
-    entry_points =     {
-        'sqlalchemy.dialects':
-            ['sqream = pysqream_sqlalchemy.dialect:SqreamDialect']
+    
+    packages         = ['pysqream_sqlalchemy'], 
+    
+    entry_points =     {'sqlalchemy.dialects': 
+        ['sqream = pysqream_sqlalchemy.dialect:SqreamDialect']
     },
     # sqream://sqream:sqream@localhost/master
-    # sqream+sqream_dialect://sqream:sqream@localhost:port/master
-
 )
+
 
 if __name__ == '__main__':
     setup(**setup_params)
