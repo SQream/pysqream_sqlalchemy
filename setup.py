@@ -17,14 +17,14 @@ setup_params = dict(
     ],
     keywords = 'database sqlalchemy sqream sqreamdb',
 
-    python_requires =  '>=3.6'
-    install_requires = ['sqlalchemy>=1.3.15',
-                       'pysqream>=3.0.1'],
+    python_requires =  '>=3.6',
+    install_requires = ['sqlalchemy>=1.3.17',
+                       'pysqream>=3.0.3'],
     package_dir =      {'': 'pysqream-sqlalchemy'},
     
     entry_points =     {
         'sqlalchemy.dialects':
-            ['sqream = pysqream-sqlalchemy.dialect:SqreamDialect']
+            ['sqream = pysqream_sqlalchemy.dialect:SqreamDialect']
     },
     # sqream://sqream:sqream@localhost/master
     # sqream+sqream_dialect://sqream:sqream@localhost:port/master
