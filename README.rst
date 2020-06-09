@@ -18,7 +18,7 @@ Simple Usage Sample:
     # Direct usage of the dialect with In-process registering, if not pip installed
     sa.dialects.registry.register("pysqream-sqlalchemy.dialect", "dialect", "SqreamDialect") 
     
-    conn_str = "pysqream+dialect://sqream:sqream@localhost:5001/master?use_ssl=True"                                                  
+    conn_str = "sqream+dialect://sqream:sqream@localhost:5001/master?use_ssl=True"                                                  
     engine = create_engine(conn_str, echo = print_echo) 
 
     metadata = MetaData()
