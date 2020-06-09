@@ -20,8 +20,6 @@ setup_params = dict(
     python_requires =  '>=3.6',
     install_requires = ['sqlalchemy>=1.3.17',
                        'pysqream>=3.0.3'],
-    package_dir =      {'': 'pysqream_sqlalchemy'},
-    
     entry_points =     {
         'sqlalchemy.dialects':
             ['sqream = pysqream_sqlalchemy.dialect:SqreamDialect']
