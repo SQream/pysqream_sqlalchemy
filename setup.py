@@ -3,13 +3,13 @@ from setuptools import setup
 
 setup_params = dict(
     
-    name =             'pysqream-sqlalchemy',
+    name =             'pysqream_sqlalchemy',
     version =          '0.1',
     description =      'SQLAlchemy dialect for SQreamDB', 
     long_description = open("README.rst", "r").read() + '\n\n',
-    url=               "https://github.com/SQream/pysqream-sqlalchemy",
+    url=               "https://github.com/SQream/pysqream_sqlalchemy",
     
-    packages =         ['pysqream-sqlalchemy'], 
+    packages =         ['pysqream_sqlalchemy'], 
     classifiers =      [
         "Programming Language :: Python :: 3.6",
         "License :: OSI Approved :: BSD License",
@@ -20,7 +20,7 @@ setup_params = dict(
     python_requires =  '>=3.6',
     install_requires = ['sqlalchemy>=1.3.17',
                        'pysqream>=3.0.3'],
-    package_dir =      {'': 'pysqream-sqlalchemy'},
+    package_dir =      {'': 'pysqream_sqlalchemy'},
     
     entry_points =     {
         'sqlalchemy.dialects':
