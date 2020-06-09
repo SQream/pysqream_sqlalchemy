@@ -14,6 +14,8 @@ Simple Usage Sample:
 ----------
 
 .. code-block:: python
+
+    import sqlalchemy as sa
               
     # Direct usage of the dialect with In-process registering, if not pip installed
     sa.dialects.registry.register("pysqream-sqlalchemy.dialect", "dialect", "SqreamDialect") 
