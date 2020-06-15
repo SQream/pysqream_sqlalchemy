@@ -25,9 +25,8 @@ for row in res:
     print row
 
 '''
-
-from __future__ import annotations
-from importlib import import_module, resources    # for importing and returning the module
+# from __future__ import annotations
+# from importlib import import_module, resources    # for importing and returning the module
 from sqlalchemy.engine.default import DefaultDialect, DefaultExecutionContext
 from sqlalchemy.types import Boolean, LargeBinary, SmallInteger, Integer, BigInteger, Float, Date, DateTime, String, Unicode, UnicodeText
 from sqlalchemy.dialects.mysql import TINYINT
@@ -267,7 +266,8 @@ class SqreamDialect(DefaultDialect):
             when trying to add a new table to the sources'''
 
         query = "select get_ddl('{}')".format(table_name)
-        table_ddl = connection.execute(query).fetchall()[0][0].splitlines()
+        res = connection.execute(query).fetchall()
+        table_ddl = ''.join(tup[0] for tup in res).splitlines()
 
         schema = table_ddl[0].split()[2].split('.')[0]
         columns_meta = []
@@ -289,7 +289,6 @@ class SqreamDialect(DefaultDialect):
                 'nullable': col_nullable,
                 'default': None
                 }
-            printdbg(c)
             columns_meta.append(c)       # add default extraction if exists in sqream
 
         return columns_meta
@@ -322,4 +321,3 @@ class SqreamDialect(DefaultDialect):
 
     def do_rollback(self, connection):
         connection.rollback()
-
