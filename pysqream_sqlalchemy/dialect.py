@@ -265,7 +265,7 @@ class SqreamDialect(DefaultDialect):
         ''' Used by SQLAlchemy's Table() which is called by Superset's get_table()
             when trying to add a new table to the sources'''
 
-        query = "select get_ddl('{}')".format(table_name)
+        query = f'select get_ddl(\'"{table_name}"\')'
         res = connection.execute(query).fetchall()
         table_ddl = ''.join(tup[0] for tup in res).splitlines()
 
