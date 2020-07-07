@@ -3,7 +3,7 @@
 '''
 
 import os, sys
-sys.path.append(sys.path[0].replace('\\', '/').rsplit('/', 1)[0] + '/pysqream')
+sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/pysqream/')
 
 from sqlalchemy import orm, create_engine, MetaData, inspect, Table, Column, select, insert, cast
 from sqlalchemy.schema import CreateTable   # Print ORM table DDLs
@@ -51,8 +51,8 @@ def sqlalchemy_tests():
     assert(all(row[0] == 1 for row in res))
 
     # Simple direct Engine query - this passes the queries to the underlying DB-API
-    res = engine.execute('create or replace table kOko ("iNts" int)')
-    res = engine.execute('insert into kOko values (1),(2),(3),(4),(5)')
+    res = engine.execute('create or replace table "kOko" ("iNts" int)')
+    res = engine.execute('insert into "kOko" values (1),(2),(3),(4),(5)')
     res = engine.execute('select * from kOko')
     # Using the underlying DB-API fetch() functions
     assert (res.fetchone() == (1,))
