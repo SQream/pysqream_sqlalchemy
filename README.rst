@@ -1,17 +1,18 @@
-===== 
-SQream SQLAlchemy Dialect
-===== 
+**********************************
+SQLAlchemy Dialect for SQream DB
+**********************************
 
 Requirements:
-----------
-- Python 3.6+ - Use Python 3.8.1+ for best performance
-- SQLAlchemy 1.3.18+ - Tested against 1.3.18 - ``pip3 install --upgrade sqlalchemy``
-- SQream DB-API Connector 3.0.3+ - ``pip3 install`` or put in the same folder as the dialect
-- Cython - an optional dependency for SQream DB-API Connector - ``pip3 install --upgrade cython``
+=====================
+
+* Python > 3.6. Python 3.8.1+ recommended
+* SQLAlchemy > 1.3.18
+* SQream DB-API Connector > 3.0.3
+* Cython (optional - improves performance)
 
 
 Simple Usage Sample:
-----------
+===============================
 
 .. code-block:: python
 
