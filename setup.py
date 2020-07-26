@@ -8,6 +8,10 @@ setup_params = dict(
     description =      'SQLAlchemy dialect for SQreamDB', 
     long_description = open("README.rst", "r").read() + '\n\n',
     url=               "https://github.com/SQream/pysqream_sqlalchemy",
+    
+    author =           'EliYk',
+    author_email =     'eliy@sqreamtech.com',
+    
     classifiers =      [
         "Programming Language :: Python :: 3.6",
         "License :: OSI Approved :: BSD License",
