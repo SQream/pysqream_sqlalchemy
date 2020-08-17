@@ -52,6 +52,7 @@ sqream_to_alchemy_types = {
     'bool':      Boolean,
     'boolean':   Boolean,
     'ubyte':     TINYINT,
+    'tinyint':   TINYINT,
     'smallint':  SmallInteger,
     'int':       Integer,
     'integer':   Integer,
@@ -63,7 +64,8 @@ sqream_to_alchemy_types = {
     'datetime':  DateTime,
     'timestamp': DateTime,
     'varchar':   String,
-    'nvarchar':  Unicode
+    'nvarchar':  Unicode,
+    'text':      Unicode,
 }
 
 
@@ -257,6 +259,13 @@ class SqreamDialect(DefaultDialect):
 
         query = "select get_schemas()"
         return [schema for schema, database in connection.execute(query).fetchall()]
+        
+
+    def get_view_names(self, connection, schema='public', **kw):
+        
+        # 0,public.fuzz
+        return [schema_view.split(".", 1)[1] for idx, schema_view in connection.execute("select get_views()").fetchall() if schema_view.split(".", 1)[0] == schema]
+
 
     def has_table(self, connection, table_name, schema=None):
         return table_name in self.get_table_names(connection, schema)
@@ -280,7 +289,7 @@ class SqreamDialect(DefaultDialect):
                 type_key = col_meta[1].split('(')[0]
                 col_type = sqream_to_alchemy_types[type_key]
             except KeyError as e:
-                f'key {type_key} not found. Perhaps get_ddl() implementation change?'
+                raise Exception(f'key {type_key} not found. Perhaps get_ddl() implementation change? ** col meta {col_meta}')
 
             col_nullable = col_meta[2] == 'null' 
             c = {
