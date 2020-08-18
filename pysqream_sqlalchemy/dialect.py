@@ -267,6 +267,7 @@ class SqreamDialect(DefaultDialect):
         return [schema_view.split(".", 1)[1] for idx, schema_view in connection.execute("select get_views()").fetchall() if schema_view.split(".", 1)[0] == schema]
 
 
+
     def has_table(self, connection, table_name, schema=None):
         return table_name in self.get_table_names(connection, schema)
 
@@ -283,7 +284,7 @@ class SqreamDialect(DefaultDialect):
 
         # 1st (0) entry is "create table", last 4 are closing parantheses and other jib
         for col in table_ddl[1:-4]:
-            col_meta = col.split()
+            col_meta = col.strip().rsplit(None, 2)
             col_name = col_meta[0][1:-1]
             try:
                 type_key = col_meta[1].split('(')[0]
