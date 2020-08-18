@@ -51,9 +51,9 @@ def sqlalchemy_tests():
     assert(all(row[0] == 1 for row in res))
 
     # Simple direct Engine query - this passes the queries to the underlying DB-API
-    res = engine.execute('create or replace table "kOko" ("iNts" int)')
+    res = engine.execute('create or replace table "kOko" ("iNts fosho" int)')
     res = engine.execute('insert into "kOko" values (1),(2),(3),(4),(5)')
-    res = engine.execute('select * from kOko')
+    res = engine.execute('select * from "kOko"')
     # Using the underlying DB-API fetch() functions
     assert (res.fetchone() == (1,))
     assert (res.fetchmany(2) == [(2,), (3,)])
@@ -62,7 +62,10 @@ def sqlalchemy_tests():
     # Reflection test
     inspector = inspect(engine)
     inspected_cols = inspector.get_columns('kOko')
-    assert (inspected_cols[0]['name'] == 'iNts')
+    assert (inspected_cols[0]['name'] == 'iNts fosho')
+
+    metadata.reflect(bind=engine)
+    assert(repr(metadata.tables["kOko"]) == "Table('kOko', MetaData(bind=Engine(pysqream+dialect://sqream:***@localhost:5001/master?use_ssl=True)), Column('iNts fosho', Integer(), table=<kOko>), schema=None)")
 
     print (f'SQLAlchemy ORM tests')
     # ORM queries - test that correct SQream queries (SQL text strings) are
@@ -82,6 +85,7 @@ def sqlalchemy_tests():
         Column('datetimes', sa.DateTime),
         Column('varchars', sa.String(10)),
         Column('nvarchars', sa.UnicodeText),
+        extend_existing = True
     )
     if engine.has_table(orm_table.name): 
         orm_table.drop()
@@ -143,9 +147,10 @@ def pandas_tests():
     df.to_sql('kOko3', engine, if_exists='replace', index=False, dtype=dtype)  
     
     res = pd.read_sql('select * from "kOko3"', conn_str)
+    res2 = pd.read_sql_table('kOko3', con=engine)
 
     assert ((res == df).eq(True).all()[0])
-
+    assert ((res2 == df).eq(True).all()[0])
 
 ## Alembic tests
 #  -------------
