@@ -51,7 +51,7 @@ def sqlalchemy_tests():
     assert(all(row[0] == 1 for row in res))
 
     # Simple direct Engine query - this passes the queries to the underlying DB-API
-    res = engine.execute('create or replace table "kOko" ("iNts fosho" int)')
+    res = engine.execute('create or replace table "kOko" ("iNts fosho" int not null)')
     res = engine.execute('insert into "kOko" values (1),(2),(3),(4),(5)')
     res = engine.execute('select * from "kOko"')
     # Using the underlying DB-API fetch() functions
@@ -65,7 +65,7 @@ def sqlalchemy_tests():
     assert (inspected_cols[0]['name'] == 'iNts fosho')
 
     metadata.reflect(bind=engine)
-    assert(repr(metadata.tables["kOko"]) == "Table('kOko', MetaData(bind=Engine(pysqream+dialect://sqream:***@localhost:5001/master?use_ssl=True)), Column('iNts fosho', Integer(), table=<kOko>), schema=None)")
+    assert(repr(metadata.tables["kOko"]) == "Table('kOko', MetaData(bind=Engine(pysqream+dialect://sqream:***@localhost:5001/master?use_ssl=True)), Column('iNts fosho', Integer(), table=<kOko>, nullable=False), schema=None)")
 
     print (f'SQLAlchemy ORM tests')
     # ORM queries - test that correct SQream queries (SQL text strings) are
