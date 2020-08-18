@@ -284,10 +284,10 @@ class SqreamDialect(DefaultDialect):
 
         # 1st (0) entry is "create table", last 4 are closing parantheses and other jib
         for col in table_ddl[1:-4]:
-            col_meta = col.strip().rsplit(None, 2)
-            col_name = col_meta[0][1:-1]
+            col_meta = col.split('"')
+            col_name = col_meta[1]
             try:
-                type_key = col_meta[1].split('(')[0]
+                type_key = col_meta[2].split()[0].split('(')[0]
                 col_type = sqream_to_alchemy_types[type_key]
             except KeyError as e:
                 raise Exception(f'key {type_key} not found. Perhaps get_ddl() implementation change? ** col meta {col_meta}')
