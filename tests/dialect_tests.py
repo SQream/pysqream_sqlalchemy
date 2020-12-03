@@ -14,6 +14,7 @@ from alembic.operations import Operations
 import sqlalchemy as sa, pandas as pd
 from time import time
 from datetime import datetime, date, timezone as tz
+from decimal import Decimal
 
 try:
     import pudb as pdb
@@ -85,6 +86,7 @@ def sqlalchemy_tests():
         Column('datetimes', sa.DateTime),
         Column('varchars', sa.String(10)),
         Column('nvarchars', sa.UnicodeText),
+        Column('numerics', sa.Numeric(38, 10)),
         extend_existing = True
     )
     if engine.has_table(orm_table.name): 
@@ -93,7 +95,7 @@ def sqlalchemy_tests():
     orm_table.create()
 
     # Insert into table
-    values = [(True, 77, 777, 7777, 77777, 7.0, 7.77777777, date(2012, 11, 23), datetime(2012, 11, 23, 16, 34, 56), 'bla', 'בלה'),] * 2 
+    values = [(True, 77, 777, 7777, 77777, 7.0, 7.77777777, date(2012, 11, 23), datetime(2012, 11, 23, 16, 34, 56), 'bla', 'בלה', Decimal("1.1")),] * 2 
     orm_table.insert().values(values).execute()
     
     # Validate results
@@ -126,7 +128,8 @@ def pandas_tests():
         'dates': [date(2012, 11, 23),date(2012, 11, 23)],
         'datetimes':  [datetime(2012, 11, 23, 16, 34, 56),datetime(2012, 11, 23, 16, 34, 56)],
         'varchars':  ['koko','koko2'],
-        'nvarchars':  ['shoko','shoko2']
+        'nvarchars':  ['shoko','shoko2'],
+        'numerics': [Decimal("1.1"), Decimal("-1.1")]
     })
 
     dtype={
@@ -140,7 +143,8 @@ def pandas_tests():
         'dates': sa.Date,
         'datetimes': sa.DateTime,
         'varchars': sa.String(10),
-        'nvarchars': sa.UnicodeText
+        'nvarchars': sa.UnicodeText,
+        'numerics': sa.Numeric(38, 10)
     }
 
     # Drop, create and insert
@@ -179,6 +183,7 @@ def alembic_tests():
         Column('datetimes', sa.DateTime),
         Column('varchars', sa.String(10)),
         Column('nvarchars', sa.UnicodeText),
+        Column('numerics', sa.Numeric(38, 10)),
     )
 
     data = [
@@ -190,10 +195,11 @@ def alembic_tests():
         'bigints': 5555,
         'floats': 5.0,
         'doubles': 5.5555555,
-        'dates':date(2012, 11, 23),
+        'dates': date(2012, 11, 23),
         'datetimes': datetime(2012, 11, 23, 16, 34, 56),
         'varchars': 'bla',
-        'nvarchars': 'bla2'
+        'nvarchars': 'bla2',
+        'numerics': Decimal("1.1")
         },
         {'bools': False,
         'ubytes':6,
@@ -202,10 +208,11 @@ def alembic_tests():
         'bigints': 6666,
         'floats': 6.0,
         'doubles': 6.6666666,
-        'dates':date(2012, 11, 24),
+        'dates': date(2012, 11, 24),
         'datetimes': datetime(2012, 11, 24, 16, 34, 57),
         'varchars': 'bla',
-        'nvarchars': 'bla2'
+        'nvarchars': 'bla2',
+        'numerics': Decimal("-1.1")
         }
     ]
 
