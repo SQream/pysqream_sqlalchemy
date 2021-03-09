@@ -28,7 +28,7 @@ for row in res:
 # from __future__ import annotations
 # from importlib import import_module, resources    # for importing and returning the module
 from sqlalchemy.engine.default import DefaultDialect, DefaultExecutionContext
-from sqlalchemy.types import Boolean, LargeBinary, SmallInteger, Integer, BigInteger, Float, Date, DateTime, String, Unicode, UnicodeText
+from sqlalchemy.types import Boolean, LargeBinary, SmallInteger, Integer, BigInteger, Float, Date, DateTime, String, Unicode, UnicodeText, Numeric
 from sqlalchemy.dialects.mysql import TINYINT
 from sqlalchemy.dialects import registry
 from sqlalchemy.sql import compiler, crud
@@ -66,6 +66,7 @@ sqream_to_alchemy_types = {
     'varchar':   String,
     'nvarchar':  Unicode,
     'text':      Unicode,
+    'numeric':   Numeric,
 }
 
 
@@ -220,9 +221,11 @@ class SqreamDialect(DefaultDialect):
         sequence also needs to be in place  '''
 
     name = 'sqream'
+    driver = 'sqream'
     default_paramstyle = 'qmark'
     supports_native_boolean = True
     supports_multivalues_insert = True
+    supports_native_decimal = True
 
     type_compiler = SqreamTypeCompiler
     statement_compiler = SqreamSQLCompiler
