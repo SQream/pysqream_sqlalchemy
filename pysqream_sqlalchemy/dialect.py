@@ -255,7 +255,10 @@ class SqreamDialect(DefaultDialect):
         ''' Allows showing table names when connecting database to Apache Superset'''
 
         query = "select * from sqream_catalog.tables"
-        return [table_spec[3] for table_spec in connection.execute(query).fetchall()]
+        tables = connection.execute(query).fetchall()
+        query = "select * from sqream_catalog.external_tables"
+        external_tables = connection.execute(query).fetchall()
+        return [table_spec[3] for table_spec in tables + external_tables]
 
     def get_schema_names(self, connection, schema=None, **kw):
         ''' Return schema names '''
@@ -287,6 +290,8 @@ class SqreamDialect(DefaultDialect):
 
         # 1st (0) entry is "create table", last 4 are closing parantheses and other jib
         for col in table_ddl[1:-4]:
+            if col == ')':
+                break
             col_meta = col.split('"')
             col_name = col_meta[1]
             try:
