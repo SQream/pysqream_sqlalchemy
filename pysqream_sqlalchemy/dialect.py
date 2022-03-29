@@ -226,6 +226,7 @@ class SqreamDialect(DefaultDialect):
     supports_native_boolean = True
     supports_multivalues_insert = True
     supports_native_decimal = True
+    supports_statement_cache = True
 
     type_compiler = SqreamTypeCompiler
     statement_compiler = SqreamSQLCompiler
