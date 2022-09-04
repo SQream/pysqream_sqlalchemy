@@ -4,13 +4,13 @@ from setuptools import setup
 setup_params = dict(
     
     name =             'pysqream_sqlalchemy',
-    version =          '0.6',
+    version =          '0.7',
     description =      'SQLAlchemy dialect for SQreamDB', 
     long_description = open("README.rst", "r").read() + '\n\n',
     url=               "https://github.com/SQream/pysqream_sqlalchemy",
     
-    author =           'EliYk',
-    author_email =     'eliy@sqreamtech.com',
+    author =           'SQream',
+    author_email =     'info@sqream.com',
     
     classifiers =      [
         "Programming Language :: Python :: 3.6",
