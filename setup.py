@@ -22,7 +22,13 @@ setup_params = dict(
     python_requires =  '>=3.6',
     
     install_requires = ['sqlalchemy>=1.3.18',
-                       'pysqream>=3.0.3'],
+                        'pysqream>=3.1.9',
+                        'setuptools==57.4.0',
+                        'pytest==6.2.3',
+                        'pudb==2022.1.2',
+                        'pandas==1.1.5',
+                        'numpy==1.19.5',
+                        'alembic==1.5.8'],
     
     packages         = ['pysqream_sqlalchemy'], 
     
