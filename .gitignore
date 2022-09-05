@@ -5,6 +5,7 @@ __pycache__/
 # Distribution / packaging
 build/
 *.egg-info/
+.idea/
 
 # Unit test / coverage reports
 archive/
