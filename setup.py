@@ -27,7 +27,7 @@ setup_params = dict(
                         'pytest==6.2.3',
                         'pudb==2022.1.2',
                         'pandas==1.1.5',
-                        'numpy==1.19.5',
+                        'numpy==1.22.0',
                         'alembic==1.5.8'],
     
     packages         = ['pysqream_sqlalchemy'], 

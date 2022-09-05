@@ -1,5 +1,5 @@
 alembic==1.5.8
-numpy==1.19.5
+numpy==1.22.0
 pandas==1.1.5
 pudb==2022.1.2
 pysqream==3.1.9
