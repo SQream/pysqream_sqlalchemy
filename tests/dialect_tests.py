@@ -23,21 +23,7 @@ except:
 
 
 ## Registering dialect
-#  -------------------
-# In-process registering, doesn't require a dialect package
-# ip="192.168.0.35"
-sa.dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect") 
-# conn_str = f"pysqream+dialect://sqream:sqream@{ip}:5001/master"
-# print_echo = False
-# engine = create_engine(conn_str, echo = print_echo)
-# sa.Tinyint = engine.dialect.Tinyint
-# session = orm.sessionmaker(bind=engine)()
-#
-# metadata = MetaData()
-# metadata.bind = engine
-
-## SQLAlchemy tests
-#  ----------------
+sa.dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
 
 
 class TestSqlalchemy(TestBase):
