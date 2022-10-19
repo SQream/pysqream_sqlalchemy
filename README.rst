@@ -7,7 +7,7 @@ Requirements:
 
 * Python > 3.6. Python 3.8.1+ recommended
 * SQLAlchemy > 1.3.18
-* SQream DB-API Connector > 3.0.3
+* SQream DB-API Connector > 3.1.8
 * Cython (optional - improves performance)
 
 
