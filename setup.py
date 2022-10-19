@@ -22,7 +22,7 @@ setup_params = dict(
     python_requires =  '>=3.6',
     
     install_requires = ['sqlalchemy>=1.3.18',
-                        'pysqream>=3.1.9',
+                        'pysqream>=3.1.8',
                         'setuptools==57.4.0',
                         'pytest==6.2.3',
                         'pudb==2022.1.2',
