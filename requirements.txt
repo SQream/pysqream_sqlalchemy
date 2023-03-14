@@ -1,7 +1,6 @@
 alembic==1.5.8
 numpy>=1.20
 pandas==1.1.5
-pudb==2022.1.2
 pysqream=>3.2.4
 pytest==6.2.3
 setuptools==57.4.0
