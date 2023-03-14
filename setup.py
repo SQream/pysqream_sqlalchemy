@@ -22,7 +22,7 @@ setup_params = dict(
     python_requires =  '>=3.9',
     
     install_requires = ['sqlalchemy>=1.4.46',
-                        'pysqream>=3.2.5',
+                        'git+https://github.com/SQream/pysqream.git@danielg_numpy_1.20',
                         'setuptools>=57.4.0',
                         'pandas>=1.5.3',
                         'numpy>=1.20',
