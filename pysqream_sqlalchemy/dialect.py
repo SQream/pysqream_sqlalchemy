@@ -236,7 +236,7 @@ class SqreamDialect(DefaultDialect):
         super().__init__(**kwargs)
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         ''' The minimal reqruirement to get an engine.connect() going'''
         # return dbapi
 
