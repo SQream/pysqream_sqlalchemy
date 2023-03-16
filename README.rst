@@ -17,13 +17,12 @@ Simple Usage Sample:
 .. code-block:: python
 
     import sqlalchemy as sa
+    import pandas as pd
                   
-    conn_str = "sqream://sqream:sqream@localhost:5001/master?use_ssl=True"                                                  
-    engine = create_engine(conn_str, echo = print_echo) 
+    conn_str = "sqream://sqream:sqream@localhost:3108/master"                                                  
+    engine = sa.create_engine(conn_str, connect_args={"clustered": True}) 
 
-    metadata = MetaData()
-    metadata.bind = engine
-
-    res = engine.execute('create or replace table test (ints int)')
-    res = engine.execute('insert into test values (5), (6)')
-    res = engine.execute('select * from test')
+    engine.execute('create or replace table test (ints int)')
+    engine.execute('insert into test values (5), (6)')
+    df = pd.read_sql('select * from test', engine)
+    print(df)
