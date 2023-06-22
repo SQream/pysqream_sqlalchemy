@@ -316,6 +316,10 @@ class SqreamDialect(DefaultDialect):
         else:
             cursor.execute(statement, parameters)
 
+    def do_executemany(self, cursor, statement, parameters):
+        cursor.executemany(statement, parameters, data_as='alchemy_flat_list')
+
+
     def _get_server_version_info(self, connection):
 
         query = 'select get_sqream_server_version()'
