@@ -100,8 +100,22 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
     ''' Overriding visit_insert behavior of generating SQL with multiple
        (?,?) clauses for ORM inserts with parameters  '''
 
-    def visit_insert(self, insert_stmt, asfrom=False, **kw):
+    # 1.4.46
+    def visit_insert(self, insert_stmt, **kw):
+
+        compile_state = insert_stmt._compile_state_factory(
+            insert_stmt, self, **kw
+        )
+        insert_stmt = compile_state.statement
+
         toplevel = not self.stack
+
+        if toplevel:
+            self.isinsert = True
+            if not self.dml_compile_state:
+                self.dml_compile_state = compile_state
+            if not self.compile_state:
+                self.compile_state = compile_state
 
         self.stack.append(
             {
@@ -111,20 +125,23 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             }
         )
 
-        crud_params = crud._setup_crud_params(
-            self, insert_stmt, crud.ISINSERT, **kw
+        crud_params = crud._get_crud_params(
+            self, insert_stmt, compile_state, **kw
         )
 
-        if (not crud_params and
-                not self.dialect.supports_default_values and
-                not self.dialect.supports_empty_insert):
+        if (
+            not crud_params
+            and not self.dialect.supports_default_values
+            and not self.dialect.supports_default_metavalue
+            and not self.dialect.supports_empty_insert
+        ):
             raise exc.CompileError(
                 "The '%s' dialect with current database "
                 "version settings does not support empty "
                 "inserts." % self.dialect.name
             )
 
-        if insert_stmt._has_multi_parameters:
+        if compile_state._has_multi_parameters:
             if not self.dialect.supports_multivalues_insert:
                 raise exc.CompileError(
                     "The '%s' dialect with current database "
@@ -151,11 +168,15 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
         if insert_stmt._hints:
             _, table_text = self._setup_crud_hints(insert_stmt, table_text)
 
+        if insert_stmt._independent_ctes:
+            for cte in insert_stmt._independent_ctes:
+                cte._compiler_dispatch(self, **kw)
+
         text += table_text
 
         if crud_params_single or not supports_default_values:
             text += " (%s)" % ", ".join(
-                [preparer.format_column(c[0]) for c in crud_params_single]
+                [expr for c, expr, value in crud_params_single]
             )
 
         if self.returning or insert_stmt._returning:
@@ -169,27 +190,39 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             returning_clause = None
 
         if insert_stmt.select is not None:
-            select_text = self.process(self._insert_from_select, **kw)
+            # placed here by crud.py
+            select_text = self.process(
+                self.stack[-1]["insert_from_select"], insert_into=True, **kw
+            )
 
-            if self.ctes and toplevel and self.dialect.cte_follows_insert:
-                text += " %s%s" % (self._render_cte_clause(), select_text)
+            if self.ctes and self.dialect.cte_follows_insert:
+                nesting_level = len(self.stack) if not toplevel else None
+                text += " %s%s" % (
+                    self._render_cte_clause(
+                        nesting_level=nesting_level,
+                        include_following_stack=True,
+                        visiting_cte=kw.get("visiting_cte"),
+                    ),
+                    select_text,
+                )
             else:
                 text += " %s" % select_text
         elif not crud_params and supports_default_values:
             text += " DEFAULT VALUES"
-
         # This part would originally generate an insert statement such as
         # `insert into table test values (?,?), (?,?), (?,?)` which sqream
         # does not support
         # <Overriding part> - money is in crud_params[0]
-        elif insert_stmt._has_multi_parameters:
-            insert_single_values_expr = ", ".join([c[1] for c in crud_params[0]])
+        elif compile_state._has_multi_parameters:
+            insert_single_values_expr = ", ".join([c[2] for c in crud_params[0]])
             text += " VALUES (%s)" % insert_single_values_expr
             if toplevel:
                 self.insert_single_values_expr = insert_single_values_expr
         # </Overriding part>
         else:
-            insert_single_values_expr = ", ".join([c[1] for c in crud_params])
+            insert_single_values_expr = ", ".join(
+                [value for c, expr, value in crud_params]
+            )
             text += " VALUES (%s)" % insert_single_values_expr
             if toplevel:
                 self.insert_single_values_expr = insert_single_values_expr
@@ -204,16 +237,20 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
         if returning_clause and not self.returning_precedes_values:
             text += " " + returning_clause
 
-        if self.ctes and toplevel and not self.dialect.cte_follows_insert:
-            text = self._render_cte_clause() + text
+        if self.ctes and not self.dialect.cte_follows_insert:
+            nesting_level = len(self.stack) if not toplevel else None
+            text = (
+                self._render_cte_clause(
+                    nesting_level=nesting_level,
+                    include_following_stack=True,
+                    visiting_cte=kw.get("visiting_cte"),
+                )
+                + text
+            )
 
         self.stack.pop(-1)
 
-        if asfrom:
-            return "(" + text + ")"
-        else:
-            return text
-
+        return text
 
 class SqreamDialect(DefaultDialect):
     ''' dbapi() classmethod, get_table_names() and get_columns() seem to be the

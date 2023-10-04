@@ -10,11 +10,12 @@ from base import TestBase, TestBaseWithoutBeforeAfter, Logger
 from alembic.runtime.migration import MigrationContext
 from alembic.operations import Operations
 
-import sqlalchemy as sa
-import pandas as pd
+import sqlalchemy as sa, pandas as pd
+# import pandas as pd
 from time import time
 from datetime import datetime, date, timezone as tz
 from decimal import Decimal
+import pytest
 
 # try:
 #     import pudb as pdb
@@ -35,7 +36,7 @@ class TestSqlalchemy(TestBase):
         sa.dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
         manual_conn_str = sa.engine.url.URL(
             'pysqream+dialect', username='sqream', password='sqream',
-            host=f'{self.ip}', port=5001, database='master')
+            host=f'{self.ip}', port=5000, database='master')
         engine2 = create_engine(manual_conn_str)
         res = engine2.execute('select 1')
         assert(all(row[0] == 1 for row in res))
@@ -86,6 +87,7 @@ class TestSqlalchemy(TestBase):
         # Insert into table
         values = [(True, 77, 777, 7777, 77777, 7.0, 7.77777777, date(2012, 11, 23), datetime(2012, 11, 23, 16, 34, 56),
                    'bla', 'בלה', Decimal("1.1")),] * 2
+
         orm_table.insert().values(values).execute()
 
         # Validate results
