@@ -304,6 +304,11 @@ class SqreamDialect(DefaultDialect):
         query = "select get_schemas()"
         return [schema for schema, database in connection.execute(query).fetchall()]
 
+    def has_schema(self, connection, schema):
+        query = "select get_schemas()"
+        schemas = [schema for schema, database in connection.execute(query).fetchall()]
+        return schema in schemas
+
     def get_view_names(self, connection, schema='public', **kw):
         
         # 0,public.fuzz

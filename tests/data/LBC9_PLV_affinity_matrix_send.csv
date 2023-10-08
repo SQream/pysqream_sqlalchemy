@@ -1,0 +1,3 @@
+technology,criteria,category,component,svn,parm_name,lpt,tech,severity
+sqream,high,db,client,connect,host,high,sqream,1.4
+sqream,low,db,server,chunk_info,read_table,high,sqream,5

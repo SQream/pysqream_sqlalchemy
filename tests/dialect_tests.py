@@ -217,3 +217,48 @@ class TestAlembic(TestBase):
 
         res = self.engine.execute('select * from waste').fetchall()
         assert(res == [tuple(dikt.values()) for dikt in data])
+
+
+class TestTI(TestBase):
+
+    def test_ti(self):
+
+        metadata = MetaData(schema="rfab_ie")
+        metadata.bind = self.engine
+
+        if not self.engine.dialect.has_schema(self.engine, metadata.schema):
+            self.engine.execute(sa.schema.CreateSchema(metadata.schema))
+
+        testware_affinity_matrix = sa.Table(
+            'testware_affinity_matrix'
+            , metadata
+            , sa.Column('technology', sa.TEXT(32))
+            , sa.Column('criteria', sa.TEXT(32))
+            , sa.Column('category', sa.TEXT(32))
+            , sa.Column('component', sa.TEXT(32))
+            , sa.Column('svn', sa.TEXT(32))
+            , sa.Column('parm_name', sa.TEXT(32))
+            , sa.Column('lpt', sa.TEXT(32))
+            , sa.Column('tech', sa.TEXT(32))
+            , sa.Column('severity', sa.Float)
+        )
+
+        if self.engine.has_table(testware_affinity_matrix.name):
+            testware_affinity_matrix.drop()
+
+        testware_affinity_matrix.create()
+
+        path = "data/LBC9_PLV_affinity_matrix_send.csv"
+        insert_data = pd.read_csv(path).to_dict('records')
+
+        ins = testware_affinity_matrix.insert(insert_data)
+        self.engine.execute(ins)
+        res = self.engine.execute(testware_affinity_matrix.select()).fetchall()
+        expected_df = pd.read_csv(path)
+        res_df = pd.DataFrame(res, columns=['technology', 'criteria', 'category', 'component',
+                                            'svn', 'parm_name', 'lpt', 'tech', 'severity'])
+
+        assert (expected_df == res_df)
+
+
+

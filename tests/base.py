@@ -7,10 +7,10 @@ from sqlalchemy import orm, create_engine, MetaData
 import sqlalchemy as sa
 
 
-def connect(ip, clustered=False, use_ssl=False):
+def connect(ip, clustered=False, use_ssl=False, port=5000):
     print_echo = False
-    conn_str = f"pysqream+dialect://sqream:sqream@{ip}:5000/master"
-    engine = create_engine(conn_str, echo=print_echo)
+    conn_str = f"pysqream+dialect://sqream:sqream@{ip}:{port}/master"
+    engine = create_engine(conn_str, echo=print_echo, connect_args={"clustered": clustered, "use_ssl": use_ssl})
     sa.Tinyint = engine.dialect.Tinyint
     session = orm.sessionmaker(bind=engine)()
     metadata = MetaData()
