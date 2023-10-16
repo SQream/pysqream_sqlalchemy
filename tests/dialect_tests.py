@@ -27,6 +27,19 @@ import pytest
 sa.dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
 
 
+def find_diff(df1: pd.DataFrame, df2: pd.DataFrame):
+    """
+    Find the differance between two dataframes
+    """
+
+    if len(df1.index) != len(df2.index):
+        msg = f"Row count does not match\nSQream returned {len(df1.index)}\nremote returned: {len(df2.index)}"
+        return (False, msg)
+
+    res = df1.compare(df2, keep_equal=True)
+    return (True, "") if res.empty else (False, str(res))
+
+
 class TestSqlalchemy(TestBase):
 
     def test_sqlalchemy(self):
@@ -258,7 +271,8 @@ class TestTI(TestBase):
         res_df = pd.DataFrame(res, columns=['technology', 'criteria', 'category', 'component',
                                             'svn', 'parm_name', 'lpt', 'tech', 'severity'])
 
-        assert (expected_df == res_df)
+        is_equal , msg_results = find_diff(expected_df, res_df)
+        assert is_equal, msg_results
 
 
 
