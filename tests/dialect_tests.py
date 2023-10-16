@@ -234,7 +234,7 @@ class TestAlembic(TestBase):
 
 class TestTI(TestBase):
 
-    def test_ti(self):
+    def test_ti_1(self):
 
         metadata = MetaData(schema="rfab_ie")
         metadata.bind = self.engine
@@ -271,8 +271,39 @@ class TestTI(TestBase):
         res_df = pd.DataFrame(res, columns=['technology', 'criteria', 'category', 'component',
                                             'svn', 'parm_name', 'lpt', 'tech', 'severity'])
 
-        is_equal , msg_results = find_diff(expected_df, res_df)
+        is_equal, msg_results = find_diff(expected_df, res_df)
         assert is_equal, msg_results
 
+    def test_ti_2(self):
 
+        metadata = MetaData(schema="test")
+        metadata.bind = self.engine
+
+        if not self.engine.dialect.has_schema(self.engine, metadata.schema):
+            self.engine.execute(sa.schema.CreateSchema(metadata.schema))
+
+        test_table = sa.Table(
+            'test'
+            , metadata
+            , sa.Column('x', sa.TEXT(32))
+            , sa.Column('y', sa.TEXT(32))
+            , sa.Column('z', sa.TEXT(32))
+        )
+
+        if self.engine.has_table(test_table.name):
+            test_table.drop()
+
+        test_table.create()
+
+        path = "data/test.csv"
+        insert_data = pd.read_csv(path).to_dict('records')
+
+        ins = test_table.insert()
+        self.engine.execute(ins, insert_data)
+        res = self.engine.execute(test_table.select()).fetchall()
+        expected_df = pd.read_csv(path)
+        res_df = pd.DataFrame(res, columns=['x', 'y', 'z'])
+
+        is_equal, msg_results = find_diff(expected_df, res_df)
+        assert is_equal, msg_results
 

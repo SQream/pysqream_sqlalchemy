@@ -100,7 +100,6 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
     ''' Overriding visit_insert behavior of generating SQL with multiple
        (?,?) clauses for ORM inserts with parameters  '''
 
-    # 1.4.46
     def visit_insert(self, insert_stmt, **kw):
 
         compile_state = insert_stmt._compile_state_factory(
