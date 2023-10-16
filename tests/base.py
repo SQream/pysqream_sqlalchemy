@@ -22,7 +22,7 @@ def setTinyint(engine):
     sa.Tinyint = engine.dialect.Tinyint
 
 
-class TestBase():
+class TestBase:
 
     @pytest.fixture()
     def ip(self, pytestconfig):
@@ -38,9 +38,59 @@ class TestBase():
         setTinyint(self.engine)
         yield
         Logger().info("After Scenario")
+        self.engine.dispose()
 
 
-class TestBaseWithoutBeforeAfter():
+class TestBaseTI:
+
+    @pytest.fixture()
+    def ip(self, pytestconfig):
+        return pytestconfig.getoption("ip")
+
+    @pytest.fixture()
+    def testware_affinity_matrix(self):
+        return self.testware_affinity_matrix
+
+    @pytest.fixture(autouse=True)
+    def Test_setup_teardown(self, ip):
+        ip = ip if ip else socket.gethostbyname(socket.gethostname())
+        Logger().info("Before Scenario")
+        Logger().info(f"Connect to server {ip}")
+        self.ip = ip
+        self.engine, self.metadata, self.session, self.conn_str = connect(ip)
+        setTinyint(self.engine)
+
+        metadata = MetaData(schema="rfab_ie")
+        metadata.bind = self.engine
+
+        if not self.engine.dialect.has_schema(self.engine, metadata.schema):
+            self.engine.execute(sa.schema.CreateSchema(metadata.schema))
+
+        self.testware_affinity_matrix = sa.Table(
+            'testware_affinity_matrix'
+            , metadata
+            , sa.Column('technology', sa.TEXT(32))
+            , sa.Column('criteria', sa.TEXT(32))
+            , sa.Column('category', sa.TEXT(32))
+            , sa.Column('component', sa.TEXT(32))
+            , sa.Column('svn', sa.TEXT(32))
+            , sa.Column('parm_name', sa.TEXT(32))
+            , sa.Column('lpt', sa.TEXT(32))
+            , sa.Column('tech', sa.TEXT(32))
+            , sa.Column('severity', sa.Float)
+        )
+
+        if self.engine.has_table(self.testware_affinity_matrix.name):
+            self.testware_affinity_matrix.drop()
+
+        self.testware_affinity_matrix.create()
+
+        yield
+        Logger().info("After Scenario")
+        self.engine.dispose()
+
+
+class TestBaseWithoutBeforeAfter:
     @pytest.fixture()
     def ip(self, pytestconfig):
         return pytestconfig.getoption("ip")

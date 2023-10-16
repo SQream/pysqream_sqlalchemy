@@ -6,7 +6,7 @@ import os, sys
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/pysqream_sqlalchemy/')
 from sqlalchemy import orm, create_engine, MetaData, inspect, Table, Column, select, insert, cast
 from sqlalchemy.schema import CreateTable   # Print ORM table DDLs
-from base import TestBase, TestBaseWithoutBeforeAfter, Logger
+from base import TestBase, TestBaseWithoutBeforeAfter, Logger, TestBaseTI
 from alembic.runtime.migration import MigrationContext
 from alembic.operations import Operations
 
@@ -232,78 +232,35 @@ class TestAlembic(TestBase):
         assert(res == [tuple(dikt.values()) for dikt in data])
 
 
-class TestTI(TestBase):
+class TestTI(TestBaseTI):
 
-    def test_ti_1(self):
+    @pytest.fixture()
+    def path(self):
+        return "data/LBC9_PLV_affinity_matrix_send.csv"
 
-        metadata = MetaData(schema="rfab_ie")
-        metadata.bind = self.engine
+    @pytest.fixture()
+    def insert_data(self, path):
+        return pd.read_csv(path).to_dict('records')
 
-        if not self.engine.dialect.has_schema(self.engine, metadata.schema):
-            self.engine.execute(sa.schema.CreateSchema(metadata.schema))
+    def test_ti_1(self, path, insert_data):
 
-        testware_affinity_matrix = sa.Table(
-            'testware_affinity_matrix'
-            , metadata
-            , sa.Column('technology', sa.TEXT(32))
-            , sa.Column('criteria', sa.TEXT(32))
-            , sa.Column('category', sa.TEXT(32))
-            , sa.Column('component', sa.TEXT(32))
-            , sa.Column('svn', sa.TEXT(32))
-            , sa.Column('parm_name', sa.TEXT(32))
-            , sa.Column('lpt', sa.TEXT(32))
-            , sa.Column('tech', sa.TEXT(32))
-            , sa.Column('severity', sa.Float)
-        )
-
-        if self.engine.has_table(testware_affinity_matrix.name):
-            testware_affinity_matrix.drop()
-
-        testware_affinity_matrix.create()
-
-        path = "data/LBC9_PLV_affinity_matrix_send.csv"
-        insert_data = pd.read_csv(path).to_dict('records')
-
-        ins = testware_affinity_matrix.insert(insert_data)
+        ins = self.testware_affinity_matrix.insert(insert_data)
         self.engine.execute(ins)
-        res = self.engine.execute(testware_affinity_matrix.select()).fetchall()
-        expected_df = pd.read_csv(path)
+        res = self.engine.execute(self.testware_affinity_matrix.select()).fetchall()
         res_df = pd.DataFrame(res, columns=['technology', 'criteria', 'category', 'component',
                                             'svn', 'parm_name', 'lpt', 'tech', 'severity'])
-
+        expected_df = pd.read_csv(path)
         is_equal, msg_results = find_diff(expected_df, res_df)
         assert is_equal, msg_results
 
-    def test_ti_2(self):
+    def test_ti_2(self, path, insert_data):
 
-        metadata = MetaData(schema="test")
-        metadata.bind = self.engine
-
-        if not self.engine.dialect.has_schema(self.engine, metadata.schema):
-            self.engine.execute(sa.schema.CreateSchema(metadata.schema))
-
-        test_table = sa.Table(
-            'test'
-            , metadata
-            , sa.Column('x', sa.TEXT(32))
-            , sa.Column('y', sa.TEXT(32))
-            , sa.Column('z', sa.TEXT(32))
-        )
-
-        if self.engine.has_table(test_table.name):
-            test_table.drop()
-
-        test_table.create()
-
-        path = "data/test.csv"
-        insert_data = pd.read_csv(path).to_dict('records')
-
-        ins = test_table.insert()
+        ins = self.testware_affinity_matrix.insert()
         self.engine.execute(ins, insert_data)
-        res = self.engine.execute(test_table.select()).fetchall()
+        res = self.engine.execute(self.testware_affinity_matrix.select()).fetchall()
+        res_df = pd.DataFrame(res, columns=['technology', 'criteria', 'category', 'component',
+                                            'svn', 'parm_name', 'lpt', 'tech', 'severity'])
         expected_df = pd.read_csv(path)
-        res_df = pd.DataFrame(res, columns=['x', 'y', 'z'])
-
         is_equal, msg_results = find_diff(expected_df, res_df)
         assert is_equal, msg_results
 
