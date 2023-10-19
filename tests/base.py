@@ -5,6 +5,8 @@ import os
 from pytest_logger import Logger
 from sqlalchemy import orm, create_engine, MetaData
 import sqlalchemy as sa
+from sqlalchemy import Table, Column
+from sqlalchemy.orm import declarative_base
 
 
 def connect(ip, clustered=False, use_ssl=False, port=5000):
@@ -40,6 +42,48 @@ class TestBase:
         Logger().info("After Scenario")
         self.engine.dispose()
 
+
+@pytest.mark.usefixtures('Test_setup_teardown')
+class TestBaseSelect(TestBase):
+
+    @pytest.fixture()
+    def table1(self):
+        return self.table1
+
+    # @pytest.fixture()
+    # def Table1(self):
+    #     return self.Table1
+
+    @pytest.fixture()
+    def table2(self):
+        return self.table2
+
+    @pytest.fixture()
+    def ip(self, pytestconfig):
+        return pytestconfig.getoption("ip")
+
+    @pytest.fixture(autouse=True)
+    def Test_setup_teardown(self, ip):
+        ip = ip if ip else socket.gethostbyname(socket.gethostname())
+        Logger().info("Before Scenario")
+        Logger().info(f"Connect to server {ip}")
+        self.ip = ip
+        self.engine, self.metadata, self.session, self.conn_str = connect(ip)
+        setTinyint(self.engine)
+
+        self.table1 = Table(
+            'table1', self.metadata,
+            Column("id", sa.Integer), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+        )
+
+        self.table2 = Table(
+            'table2', self.metadata,
+            Column("id", sa.Integer), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+        )
+
+        yield
+        Logger().info("After Scenario")
+        self.engine.dispose()
 
 class TestBaseTI:
 

@@ -264,3 +264,28 @@ class TestTI(TestBaseTI):
         is_equal, msg_results = find_diff(expected_df, res_df)
         assert is_equal, msg_results
 
+
+class TestNew(TestBase):
+
+    def test_1(self):
+        from sqlalchemy import Integer, String
+        from sqlalchemy.sql import column, table
+
+        table1 = Table(
+            'table1', self.metadata,
+            Column("id", sa.Integer), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+        )
+        if self.engine.has_table(table1.name):
+            table1.drop()
+
+        table1.create()
+
+        # Insert into table
+        values = [(1, 'str', 2)]
+
+        table1.insert().values(values).execute()
+
+        # stmt = table1.delete().where(table1.c.id == '1')
+        stmt = table1.select().where(table1.c.id == '1')
+        print(stmt)
+        # self.engine.execute(stmt)

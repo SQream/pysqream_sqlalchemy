@@ -25,6 +25,7 @@ for row in res:
     print row
 
 '''
+import pysqream.utils
 # from __future__ import annotations
 # from importlib import import_module, resources    # for importing and returning the module
 from sqlalchemy.engine.default import DefaultDialect, DefaultExecutionContext
