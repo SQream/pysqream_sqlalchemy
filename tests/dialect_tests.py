@@ -4,23 +4,18 @@
 
 import os, sys
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/pysqream_sqlalchemy/')
+sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/tests/')
 from sqlalchemy import orm, create_engine, MetaData, inspect, Table, Column, select, insert, cast
 from sqlalchemy.schema import CreateTable   # Print ORM table DDLs
-from base import TestBase, TestBaseWithoutBeforeAfter, Logger, TestBaseTI
+from test_base import TestBase, Logger, TestBaseTI
 from alembic.runtime.migration import MigrationContext
 from alembic.operations import Operations
-
 import sqlalchemy as sa, pandas as pd
 # import pandas as pd
 from time import time
 from datetime import datetime, date, timezone as tz
 from decimal import Decimal
 import pytest
-
-# try:
-#     import pudb as pdb
-# except:
-#     import pdb
 
 
 ## Registering dialect
@@ -268,8 +263,6 @@ class TestTI(TestBaseTI):
 class TestNew(TestBase):
 
     def test_1(self):
-        from sqlalchemy import Integer, String
-        from sqlalchemy.sql import column, table
 
         table1 = Table(
             'table1', self.metadata,

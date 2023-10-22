@@ -1,16 +1,19 @@
 
-from base import TestBaseSelect
+
+import os, sys
+sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/pysqream_sqlalchemy/')
+sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/tests/')
+from test_base import TestBaseDto
 from sqlalchemy import select, dialects, Table, Column, union_all
 from sqlalchemy.orm import aliased
 import sqlalchemy as sa
 import pytest
-import os, sys
-sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/pysqream_sqlalchemy/')
+
 
 dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
 
 
-class TestOrmSelect(TestBaseSelect):
+class TestOrmDto(TestBaseDto):
 
     def test_select(self):
 
@@ -28,7 +31,7 @@ class TestOrmSelect(TestBaseSelect):
         assert expected_stmt == str(stmt)
 
     # Select Where not supported
-    def test_select_where(self):
+    def test_select_where_not_supported(self):
 
         stmt = self.table1.select().where(self.table1.c.id == '1')
         with pytest.raises(Exception) as e_info:

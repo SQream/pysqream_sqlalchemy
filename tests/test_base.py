@@ -5,8 +5,8 @@ import os
 from pytest_logger import Logger
 from sqlalchemy import orm, create_engine, MetaData
 import sqlalchemy as sa
-from sqlalchemy import Table, Column
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import Table, Column, String, Integer, ForeignKey, Sequence, Identity
+from sqlalchemy.orm import declarative_base, relationship, IdentityMap
 
 
 def connect(ip, clustered=False, use_ssl=False, port=5000):
@@ -32,27 +32,80 @@ class TestBase:
 
     @pytest.fixture(autouse=True)
     def Test_setup_teardown(self, ip):
+        self.start(ip)
+        yield
+        self.stop()
+
+    def start(self, ip):
         ip = ip if ip else socket.gethostbyname(socket.gethostname())
         Logger().info("Before Scenario")
         Logger().info(f"Connect to server {ip}")
         self.ip = ip
-        self.engine ,self.metadata ,self.session, self.conn_str = connect(ip)
+        self.engine, self.metadata, self.session, self.conn_str = connect(ip)
         setTinyint(self.engine)
-        yield
+
+    def stop(self):
         Logger().info("After Scenario")
         self.engine.dispose()
 
 
-@pytest.mark.usefixtures('Test_setup_teardown')
-class TestBaseSelect(TestBase):
+class TestBaseDao(TestBase):
+
+    @pytest.fixture()
+    def ip(self, pytestconfig):
+        return pytestconfig.getoption("ip")
+
+    @pytest.fixture()
+    def Base(self, pytestconfig):
+        return self.Base
+
+    @pytest.fixture()
+    def user(self):
+        return self.user
+
+    @pytest.fixture()
+    def address(self):
+        return self.address
+
+    @pytest.fixture(autouse=True)
+    def Test_setup_teardown(self, ip):
+        self.Base = declarative_base()
+
+        class User(self.Base):
+            __tablename__ = "user_account"
+
+            id = Column(Integer, Identity(start=0), primary_key=True)
+            name = Column(sa.UnicodeText)
+            fullname = Column(sa.UnicodeText)
+            # addresses = relationship("Address", back_populates="user", cascade="all, delete-orphan")
+
+            def __repr__(self):
+                return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
+
+        class Address(self.Base):
+            __tablename__ = "address"
+
+            id = Column(sa.Integer, Identity(start=0), primary_key=True)
+            email_address = Column(sa.UnicodeText, nullable=False)
+            user_id = Column(sa.Integer, nullable=False)
+            # user = relationship("User", back_populates="addresses")
+
+            def __repr__(self):
+                return f"Address(id={self.id!r}, email_address={self.email_address!r})"
+
+        self.user = User
+        self.address = Address
+
+        self.start(ip)
+        yield
+        self.stop()
+
+
+class TestBaseDto(TestBase):
 
     @pytest.fixture()
     def table1(self):
         return self.table1
-
-    # @pytest.fixture()
-    # def Table1(self):
-    #     return self.Table1
 
     @pytest.fixture()
     def table2(self):
@@ -64,12 +117,7 @@ class TestBaseSelect(TestBase):
 
     @pytest.fixture(autouse=True)
     def Test_setup_teardown(self, ip):
-        ip = ip if ip else socket.gethostbyname(socket.gethostname())
-        Logger().info("Before Scenario")
-        Logger().info(f"Connect to server {ip}")
-        self.ip = ip
-        self.engine, self.metadata, self.session, self.conn_str = connect(ip)
-        setTinyint(self.engine)
+        self.start(ip)
 
         self.table1 = Table(
             'table1', self.metadata,
@@ -82,10 +130,10 @@ class TestBaseSelect(TestBase):
         )
 
         yield
-        Logger().info("After Scenario")
-        self.engine.dispose()
+        self.stop()
 
-class TestBaseTI:
+
+class TestBaseTI(TestBase):
 
     @pytest.fixture()
     def ip(self, pytestconfig):
@@ -97,12 +145,7 @@ class TestBaseTI:
 
     @pytest.fixture(autouse=True)
     def Test_setup_teardown(self, ip):
-        ip = ip if ip else socket.gethostbyname(socket.gethostname())
-        Logger().info("Before Scenario")
-        Logger().info(f"Connect to server {ip}")
-        self.ip = ip
-        self.engine, self.metadata, self.session, self.conn_str = connect(ip)
-        setTinyint(self.engine)
+        self.start(ip)
 
         metadata = MetaData(schema="rfab_ie")
         metadata.bind = self.engine
@@ -130,16 +173,4 @@ class TestBaseTI:
         self.testware_affinity_matrix.create()
 
         yield
-        Logger().info("After Scenario")
-        self.engine.dispose()
-
-
-class TestBaseWithoutBeforeAfter:
-    @pytest.fixture()
-    def ip(self, pytestconfig):
-        return pytestconfig.getoption("ip")
-
-    @pytest.fixture(autouse=True)
-    def Test_setup_teardown(self, ip):
-        self.ip = ip if ip else socket.gethostbyname(socket.gethostname())
-        yield
+        self.stop()
