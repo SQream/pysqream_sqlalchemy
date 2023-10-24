@@ -49,7 +49,7 @@ class TestBase:
         self.engine.dispose()
 
 
-class TestBaseDao(TestBase):
+class TestBaseOrm(TestBase):
 
     @pytest.fixture()
     def ip(self, pytestconfig):
@@ -67,6 +67,14 @@ class TestBaseDao(TestBase):
     def address(self):
         return self.address
 
+    @pytest.fixture()
+    def table1(self):
+        return self.table1
+
+    @pytest.fixture()
+    def table2(self):
+        return self.table2
+
     @pytest.fixture(autouse=True)
     def Test_setup_teardown(self, ip):
         self.Base = declarative_base()
@@ -77,7 +85,6 @@ class TestBaseDao(TestBase):
             id = Column(Integer, Identity(start=0), primary_key=True)
             name = Column(sa.UnicodeText)
             fullname = Column(sa.UnicodeText)
-            # addresses = relationship("Address", back_populates="user", cascade="all, delete-orphan")
 
             def __repr__(self):
                 return f"User(id={self.id!r}, name={self.name!r}, fullname={self.fullname!r})"
@@ -88,7 +95,6 @@ class TestBaseDao(TestBase):
             id = Column(sa.Integer, Identity(start=0), primary_key=True)
             email_address = Column(sa.UnicodeText, nullable=False)
             user_id = Column(sa.Integer, nullable=False)
-            # user = relationship("User", back_populates="addresses")
 
             def __repr__(self):
                 return f"Address(id={self.id!r}, email_address={self.email_address!r})"
@@ -96,27 +102,6 @@ class TestBaseDao(TestBase):
         self.user = User
         self.address = Address
 
-        self.start(ip)
-        yield
-        self.stop()
-
-
-class TestBaseDto(TestBase):
-
-    @pytest.fixture()
-    def table1(self):
-        return self.table1
-
-    @pytest.fixture()
-    def table2(self):
-        return self.table2
-
-    @pytest.fixture()
-    def ip(self, pytestconfig):
-        return pytestconfig.getoption("ip")
-
-    @pytest.fixture(autouse=True)
-    def Test_setup_teardown(self, ip):
         self.start(ip)
 
         self.table1 = Table(

@@ -3,9 +3,10 @@
 import os, sys
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/pysqream_sqlalchemy/')
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/tests/')
-from test_base import TestBaseDto
+from test_base import TestBaseOrm
 from sqlalchemy import select, dialects, Table, Column, union_all
-from sqlalchemy.orm import aliased
+from sqlalchemy.sql import exists
+from sqlalchemy.orm import aliased, Session
 import sqlalchemy as sa
 import pytest
 
@@ -13,7 +14,7 @@ import pytest
 dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
 
 
-class TestOrmDto(TestBaseDto):
+class TestOrmDto(TestBaseOrm):
 
     def test_select(self):
 
@@ -134,3 +135,41 @@ class TestOrmDto(TestBaseDto):
                         f"{self.table2.c.value} \nFROM {self.table2.name}"
         stmt = union_all(select(self.table1), select(self.table2))
         assert expected_stmt == str(stmt)
+
+    def test_exists(self):
+
+        self.Base.metadata.drop_all(bind=self.engine)
+        self.Base.metadata.create_all(self.engine)
+
+        stmt = exists().where(self.user.id == self.address.id)
+        with Session(self.engine) as session:
+            spongebob = self.user(id=1,
+                                  name="spongebob",
+                                  fullname="Spongebob Squarepants")
+            spongebob_email = self.address(id=1, email_address="spongebob@gmail.com", user_id=1)
+            session.add_all([spongebob, spongebob_email])
+            session.flush()
+
+            for (name,) in session.query(self.user.name).filter(stmt):
+                assert name == "spongebob", f"Exist is not return the correct value, " \
+                                          f"expected to get spongebob, bot got {name}"
+
+    # Exists like not supported
+    def test_exists_with_like_not_supported(self):
+
+        self.Base.metadata.drop_all(bind=self.engine)
+        self.Base.metadata.create_all(self.engine)
+
+        with Session(self.engine) as session:
+            spongebob = self.user(id=1,
+                                  name="spongebob",
+                                  fullname="Spongebob Squarepants")
+            spongebob_email = self.address(id=1, email_address="spongebob@gmail.com", user_id=1)
+            session.add_all([spongebob, spongebob_email])
+            session.flush()
+
+            with pytest.raises(Exception) as e_info:
+                for (name,) in session.query(self.user.name).filter(self.address.email_address.like("%gmail%")):
+                    print(name)
+
+        assert "Parametered queries not supported" in str(e_info.value)
