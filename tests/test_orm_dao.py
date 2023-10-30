@@ -2,7 +2,7 @@ import os, sys
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/pysqream_sqlalchemy/')
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/tests/')
 from test_base import TestBaseOrm
-from sqlalchemy import select, dialects, Table, Column, union_all, Identity, ForeignKey, Sequence, schema, update
+from sqlalchemy import select, dialects, Table, Column, union_all, Identity, ForeignKey, Sequence, schema, update, delete
 from sqlalchemy.orm import aliased, Session
 import sqlalchemy as sa
 import pytest
@@ -168,7 +168,7 @@ class TestOrmDao(TestBaseOrm):
         assert len(res) == 3, "Row count after insert is not correct"
 
     # Delete Where not supported
-    def test_delete_not_supported(self):
+    def test_delete_where_not_supported_1(self):
         self.Base.metadata.drop_all(bind=self.engine)
         self.Base.metadata.create_all(self.engine)
 
@@ -186,7 +186,21 @@ class TestOrmDao(TestBaseOrm):
                 session.flush()
                 # session.commit() # not doing nothing
 
-        assert "Parametered queries not supported" in str(e_info.value)
+        assert "Delete clause of parameterized query not supported on SQream" in str(e_info.value)
+
+    def test_delete_where_not_supported_2(self):
+
+        stmt = delete(self.user).where(self.user.id == "1")
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "Delete clause of parameterized query not supported on SQream" in str(e_info.value)
+
+    def test_delete(self):
+        expected_stmt = f"DELETE FROM {self.user.__tablename__}"
+        stmt = delete(self.user)
+        assert expected_stmt == str(stmt)
 
     # Update Where not supported
     def test_update_not_supported(self):
@@ -196,4 +210,4 @@ class TestOrmDao(TestBaseOrm):
             with Session(self.engine) as session:
                 session.execute(stmt)
 
-        assert "Parametered queries not supported" in str(e_info.value)
+        assert "Update clause of parameterized query not supported on SQream" in str(e_info.value)

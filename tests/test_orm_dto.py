@@ -34,11 +34,10 @@ class TestOrmDto(TestBaseOrm):
     # Select Where not supported
     def test_select_where_not_supported(self):
 
-        stmt = self.table1.select().where(self.table1.c.id == '1')
         with pytest.raises(Exception) as e_info:
-            self.engine.execute(stmt).fetchall()
+            print(self.table1.select().where(self.table1.c.id == '1'))
 
-        assert "Parametered queries not supported" in str(e_info.value)
+        assert "Where clause of parameterized query not supported on SQream" in str(e_info.value)
 
     def test_select_order_by(self):
 
@@ -69,13 +68,12 @@ class TestOrmDto(TestBaseOrm):
         assert expected_stmt == str(stmt)
 
     # Select Join Where not supported
-    def test_select_join_where(self):
+    def test_select_join_where_not_supported(self):
 
         join_stmt = self.table1.join(self.table2, self.table1.c.id == self.table2.c.id)
-        stmt = select([self.table1]).select_from(join_stmt).where(self.table1.c.id == '1')
         with pytest.raises(Exception) as e_info:
-            self.engine.execute(stmt).fetchall()
-        assert "Parametered queries not supported" in str(e_info.value)
+            print(select([self.table1]).select_from(join_stmt).where(self.table1.c.id == '1'))
+        assert "Where clause of parameterized query not supported on SQream" in str(e_info.value)
 
     def test_select_join_order_by(self):
 
@@ -172,4 +170,4 @@ class TestOrmDto(TestBaseOrm):
                 for (name,) in session.query(self.user.name).filter(self.address.email_address.like("%gmail%")):
                     print(name)
 
-        assert "Parametered queries not supported" in str(e_info.value)
+        assert "Where clause of parameterized query not supported on SQream" in str(e_info.value)
