@@ -4,7 +4,7 @@ import os, sys
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/pysqream_sqlalchemy/')
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/tests/')
 from test_base import TestBaseOrm
-from sqlalchemy import select, dialects, Table, Column, union_all
+from sqlalchemy import select, dialects, Table, Column, union_all, func, distinct
 from sqlalchemy.sql import exists
 from sqlalchemy.orm import aliased, Session
 import sqlalchemy as sa
@@ -171,3 +171,68 @@ class TestOrmDto(TestBaseOrm):
                     print(name)
 
         assert "Where clause of parameterized query not supported on SQream" in str(e_info.value)
+
+    def test_case(self):
+        pass
+
+    def test_cast(self):
+        pass
+
+    def test_table_description(self):
+        pass
+
+    def test_func_count(self):
+        pass
+
+    def test_func_current_timestamp(self):
+        pass
+
+    def test_distinct(self):
+        pass
+
+    def test_true(self):
+        # sql.expression
+        pass
+
+    def test_false(self):
+        # sql.expression
+        pass
+
+    def test_window_function(self):
+        # https://docs.sqlalchemy.org/en/20/core/functions.html#sqlalchemy.sql.functions.Function
+        pass
+
+    def test_asc(self):
+        pass
+
+    def test_desc(self):
+        pass
+
+    def test_nulls_first_not_supported(self):
+        pass
+
+    def test_nulls_last_not_supported(self):
+        pass
+
+    def test_extract(self):
+        pass
+
+    def test_collate(self):
+        pass
+
+    def test_concat(self):
+        pass
+
+    def test_contains(self):
+        pass
+
+    def test_endswith(self):
+        pass
+
+    def test_in(self):
+        pass
+
+    def test_like(self):
+        pass
+
+

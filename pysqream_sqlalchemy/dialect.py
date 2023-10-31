@@ -202,10 +202,12 @@ class SqreamDialect(DefaultDialect):
     def get_indexes(self, connection, table_name, schema=None, **kw):
         return []
 
+    # TODO - add to readme - commit not supported
     def do_commit(self, connection):
         connection.commit()
         # raise NotSupportedException("commit are not supported by SQream")
 
+    # TODO - add to readme - rollback not supported
     def do_rollback(self, connection):
         connection.rollback()
         # raise NotSupportedException("rollback are not supported by SQream")
