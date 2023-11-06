@@ -4,7 +4,7 @@ import os, sys
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/pysqream_sqlalchemy/')
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/tests/')
 from test_base import TestBaseOrm
-from sqlalchemy import select, dialects, Table, Column, union_all, func, distinct
+from sqlalchemy import select, dialects, Table, Column, union_all, func, distinct, case, cast, Numeric
 from sqlalchemy.sql import exists
 from sqlalchemy.orm import aliased, Session
 import sqlalchemy as sa
@@ -57,6 +57,12 @@ class TestOrmDto(TestBaseOrm):
         assert expected_stmt == str(stmt)
 
         stmt = self.table1.select().order_by(self.table1.c.id, self.table1.c.name)
+        assert expected_stmt == str(stmt)
+
+    def test_select_group_by(self):
+
+        expected_stmt = f"SELECT {self.table1.c.value} \nFROM {self.table1.name} GROUP BY {self.table1.c.value}"
+        stmt = select(self.table1.c.value).group_by(self.table1.c.value)
         assert expected_stmt == str(stmt)
 
     def test_select_join(self):
@@ -172,20 +178,130 @@ class TestOrmDto(TestBaseOrm):
 
         assert "Where clause of parameterized query not supported on SQream" in str(e_info.value)
 
-    def test_case(self):
-        pass
+    # Case is not supported
+    def test_case_not_supported(self):
+
+        self.Base.metadata.drop_all(bind=self.engine)
+        self.Base.metadata.create_all(self.engine)
+
+        with Session(self.engine) as session:
+            spongebob = self.user(id=1,
+                                  name="spongebob",
+                                  fullname="Spongebob Squarepants")
+            spongebob_email = self.address(id=1, email_address="spongebob@gmail.com", user_id=1)
+            session.add_all([spongebob, spongebob_email])
+            session.flush()
+
+        stmt = select(self.user). \
+            where(
+            case(
+                (self.user.name == 'spongebob', 'S'),
+                (self.user.name == 'jack', 'J'),
+                else_='E'
+            )
+        )
+
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "Where clause of parameterized query not supported on SQream" in str(e_info.value)
 
     def test_cast(self):
-        pass
 
-    def test_table_description(self):
-        pass
+        expected_stmt = f"SELECT CAST({self.user.__tablename__}.id AS NUMERIC(10, 4)) AS id \nFROM {self.user.__tablename__}"
+        stmt = select(cast(self.user.id, Numeric(10, 4)))
+        assert expected_stmt == str(stmt)
+
+    def test_func_sum(self):
+
+        expected_stmt = f"SELECT sum({self.table1.c.value}) AS sum_1 \nFROM {self.table1}"
+        stmt = select(func.sum(self.table1.c.value))
+        assert expected_stmt == str(stmt)
 
     def test_func_count(self):
-        pass
+        expected_stmt = f"SELECT count({self.table1.c.value}) AS count_1 \nFROM {self.table1}"
+        stmt = select(func.count(self.table1.c.value))
+        assert expected_stmt == str(stmt)
+
+    def test_func_max(self):
+        expected_stmt = f"SELECT max({self.table1.c.value}) AS max_1 \nFROM {self.table1}"
+        stmt = select(func.max(self.table1.c.value))
+        assert expected_stmt == str(stmt)
+
+    def test_func_min(self):
+        expected_stmt = f"SELECT min({self.table1.c.value}) AS min_1 \nFROM {self.table1}"
+        stmt = select(func.min(self.table1.c.value))
+        assert expected_stmt == str(stmt)
 
     def test_func_current_timestamp(self):
+
+        expected_stmt = "SELECT CURRENT_TIMESTAMP AS current_timestamp_1"
+        stmt = select(func.current_timestamp())
+        assert expected_stmt == str(stmt)
+
+    def test_func_now_not_supported(self):
+
+        stmt = select(func.now())
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "now function not supported on SQream" in str(e_info.value)
+
+    def test_aggregate_strings_not_supported(self):
+
+        stmt = select(func.aggregate_strings(self.user.name, "."))
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "aggregate_strings function not supported on SQream" in str(e_info.value)
+
+    def test_array_agg(self):
+
+        expected_stmt = f"SELECT array_agg({self.user.__tablename__}.id) AS array_agg_1 FROM {self.user.__tablename__}"
+        stmt = select(func.array_agg(self.user.id))
+        assert expected_stmt == str(stmt)
+
+    def test_char_length_not_supported(self):
+
+        stmt = select(func.char_length('daniel'))
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "char_length function with parameterized value is not supported on SQream" in str(e_info.value)
+
+    def test_coalesce(self):
+
+        stmt = select(func.coalesce(None, None, None, 1))
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "coalesce function with parameterized value is not supported on SQream" in str(e_info.value)
+
+    def test_cube(self):
+
+        stmt = select(func.sum(self.user.id), self.user.name, self.user.fullname
+                ).group_by(func.cube(self.user.name, self.user.fullname))
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+        assert "cube function not supported on SQream" in str(e_info.value)
+
+    def test_collate(self):
         pass
+
+    def test_concat(self):
+
+        stmt = select(func.concat('a', 'b'))
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "concat function with parameterized value is not supported on SQream" in str(e_info.value)
 
     def test_distinct(self):
         pass
@@ -196,10 +312,6 @@ class TestOrmDto(TestBaseOrm):
 
     def test_false(self):
         # sql.expression
-        pass
-
-    def test_window_function(self):
-        # https://docs.sqlalchemy.org/en/20/core/functions.html#sqlalchemy.sql.functions.Function
         pass
 
     def test_asc(self):
@@ -217,12 +329,6 @@ class TestOrmDto(TestBaseOrm):
     def test_extract(self):
         pass
 
-    def test_collate(self):
-        pass
-
-    def test_concat(self):
-        pass
-
     def test_contains(self):
         pass
 
@@ -234,5 +340,13 @@ class TestOrmDto(TestBaseOrm):
 
     def test_like(self):
         pass
+
+    def test_window_function(self):
+        # https://docs.sqlalchemy.org/en/20/core/functions.html#sqlalchemy.sql.functions.Function
+        pass
+
+    def test_cume_dist(self):
+        pass
+
 
 

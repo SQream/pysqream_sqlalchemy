@@ -1,7 +1,8 @@
 
-from sqlalchemy.sql import compiler, crud, selectable
+from sqlalchemy.sql import compiler, crud, selectable, elements
 from sqlalchemy import exc, util
 from sqlalchemy.dialects.mysql import TINYINT
+from sqlalchemy.sql.compiler import FUNCTIONS
 
 
 class TINYINT(TINYINT):
@@ -214,6 +215,9 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
                 (hasattr(select_stmt.whereclause.left, "value")) or (hasattr(select_stmt.whereclause.right, "value"))):
             raise NotSupportedException("Where clause of parameterized query not supported on SQream")
 
+        elif select_stmt.whereclause is not None and hasattr(select_stmt.whereclause, "whens"):
+            raise NotSupportedException("Where clause of parameterized query not supported on SQream")
+
         toplevel = not self.stack
 
         if toplevel and not self.compile_state:
@@ -403,7 +407,7 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
         elif delete_stmt.whereclause is not None and \
                 (hasattr(delete_stmt.whereclause, "left") and hasattr(delete_stmt.whereclause, "right")) and (
                 (hasattr(delete_stmt.whereclause.left, "value")) or (hasattr(delete_stmt.whereclause.right, "value"))):
-            raise NotSupportedException("Delete clause of parameterized query not supported on SQream")
+            raise NotSupportedException("Where clause of parameterized query not supported on SQream")
 
         toplevel = not self.stack
         if toplevel:
@@ -501,7 +505,7 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
         if update_stmt.whereclause is not None and \
                 (hasattr(update_stmt.whereclause, "left") and hasattr(update_stmt.whereclause, "right")) and (
                 (hasattr(update_stmt.whereclause.left, "value")) or (hasattr(update_stmt.whereclause.right, "value"))):
-            raise NotSupportedException("Update clause of parameterized query not supported on SQream")
+            raise NotSupportedException("Where clause of parameterized query not supported on SQream")
 
         toplevel = not self.stack
         if toplevel:
@@ -612,6 +616,56 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
 
         return text
 
+    def visit_function(self, func, add_to_result_map=None, **kwargs):
+        if func.name in ['now', 'aggregate_strings', 'cube']:
+            raise NotSupportedException(f"{func.name} function not supported on SQream")
+
+        elif func.name in ['char_length', 'coalesce', 'concat']:
+            raise NotSupportedException(f"{func.name} function with parameterized value is not supported on SQream")
+
+        if add_to_result_map is not None:
+            add_to_result_map(func.name, func.name, (), func.type)
+
+        disp = getattr(self, "visit_%s_func" % func.name.lower(), None)
+        if disp:
+            text = disp(func, **kwargs)
+        else:
+            name = FUNCTIONS.get(func._deannotate().__class__, None)
+            if name:
+                if func._has_args:
+                    name += "%(expr)s"
+            else:
+                name = func.name
+                name = (
+                    self.preparer.quote(name)
+                    if self.preparer._requires_quotes_illegal_chars(name)
+                    or isinstance(name, elements.quoted_name)
+                    else name
+                )
+                name = name + "%(expr)s"
+            text = ".".join(
+                [
+                    (
+                        self.preparer.quote(tok)
+                        if self.preparer._requires_quotes_illegal_chars(tok)
+                        or isinstance(name, elements.quoted_name)
+                        else tok
+                    )
+                    for tok in func.packagenames
+                ]
+                + [name]
+            ) % {"expr": self.function_argspec(func, **kwargs)}
+
+        if func._with_ordinality:
+            text += " WITH ORDINALITY"
+        return text
+
+    def visit_concat_func(self, concat, **kw):
+        concat_str = " || "
+        question_mark = []
+        for cla in concat.expression.clauses:
+            question_mark.append("?")
+        return concat_str.join(question_mark)
 
 
 

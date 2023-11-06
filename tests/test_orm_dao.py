@@ -186,7 +186,7 @@ class TestOrmDao(TestBaseOrm):
                 session.flush()
                 # session.commit() # not doing nothing
 
-        assert "Delete clause of parameterized query not supported on SQream" in str(e_info.value)
+        assert "Where clause of parameterized query not supported on SQream" in str(e_info.value)
 
     def test_delete_where_not_supported_2(self):
 
@@ -195,7 +195,7 @@ class TestOrmDao(TestBaseOrm):
             with Session(self.engine) as session:
                 session.execute(stmt)
 
-        assert "Delete clause of parameterized query not supported on SQream" in str(e_info.value)
+        assert "Where clause of parameterized query not supported on SQream" in str(e_info.value)
 
     def test_delete(self):
         expected_stmt = f"DELETE FROM {self.user.__tablename__}"
@@ -210,4 +210,7 @@ class TestOrmDao(TestBaseOrm):
             with Session(self.engine) as session:
                 session.execute(stmt)
 
-        assert "Update clause of parameterized query not supported on SQream" in str(e_info.value)
+        assert "Where clause of parameterized query not supported on SQream" in str(e_info.value)
+
+    def test_table_description(self):
+        pass
