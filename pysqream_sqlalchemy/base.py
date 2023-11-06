@@ -617,10 +617,12 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
         return text
 
     def visit_function(self, func, add_to_result_map=None, **kwargs):
-        if func.name in ['now', 'aggregate_strings', 'cube']:
+        if func.name in ['aggregate_strings', 'cube', 'current_time', 'current_user', 'grouping_sets', 'localtime',
+                         'next_value', 'random', 'rollup', 'session_user', 'user']:
             raise NotSupportedException(f"{func.name} function not supported on SQream")
 
-        elif func.name in ['char_length', 'coalesce', 'concat']:
+        elif func.name in ['char_length', 'coalesce', 'concat', 'percentile_cont', 'percentile_disc', 'nth_value',
+                           'ntile']:
             raise NotSupportedException(f"{func.name} function with parameterized value is not supported on SQream")
 
         if add_to_result_map is not None:
@@ -667,7 +669,16 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             question_mark.append("?")
         return concat_str.join(question_mark)
 
+    def visit_now_func(self, now, **kw):
+        return "CURRENT_TIMESTAMP"
 
+    def visit_localtimestamp_func(self, localtimestamp, **kw):
+        return "CURRENT_TIMESTAMP"
+
+    def visit_like_op_binary(self, binary, operator, **kw):
+        print(operator)
+        print(binary)
+        print("daniel")
 
 class SqreamDDLCompiler(compiler.DDLCompiler):
 

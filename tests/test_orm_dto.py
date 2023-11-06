@@ -65,6 +65,17 @@ class TestOrmDto(TestBaseOrm):
         stmt = select(self.table1.c.value).group_by(self.table1.c.value)
         assert expected_stmt == str(stmt)
 
+    def test_grouping_sets(self):
+
+        stmt = select(
+            func.sum(self.user.id), self.user.name, self.user.fullname
+        ).group_by(func.grouping_sets(self.user.name, self.user.fullname))
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "grouping_sets function not supported on SQream" in str(e_info.value)
+
     def test_select_join(self):
 
         expected_stmt = f"SELECT {self.table1.c.id}, {self.table1.c.name}, {self.table1.c.value} \nFROM {self.table1.name} " \
@@ -240,14 +251,50 @@ class TestOrmDto(TestBaseOrm):
         stmt = select(func.current_timestamp())
         assert expected_stmt == str(stmt)
 
-    def test_func_now_not_supported(self):
+    def test_func_now(self):
 
         stmt = select(func.now())
+        with Session(self.engine) as session:
+            res = session.execute(stmt)
+
+        assert res.fetchall() != None, "Excepted to results"
+
+    def test_func_localtimestamp(self):
+
+        stmt = select(func.localtimestamp())
+        with Session(self.engine) as session:
+            res = session.execute(stmt)
+
+        assert res.fetchall() != None, "Excepted to results"
+
+    def test_func_current_date(self):
+
+        expected_stmt = "SELECT CURRENT_DATE AS current_date_1"
+        stmt = select(func.current_date())
+        assert expected_stmt == str(stmt)
+
+    def test_func_current_time_not_supported(self):
+
+        stmt = select(func.current_time())
         with pytest.raises(Exception) as e_info:
             with Session(self.engine) as session:
                 session.execute(stmt)
 
-        assert "now function not supported on SQream" in str(e_info.value)
+        assert "current_time function not supported on SQream" in str(e_info.value)
+
+    def test_func_localtime_not_supported(self):
+
+        stmt = select(func.localtime())
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "localtime function not supported on SQream" in str(e_info.value)
+
+    def test_sysdate(self):
+        expected_stmt = "SELECT sysdate AS sysdate_1"
+        stmt = select(func.sysdate())
+        assert expected_stmt == str(stmt)
 
     def test_aggregate_strings_not_supported(self):
 
@@ -273,7 +320,7 @@ class TestOrmDto(TestBaseOrm):
 
         assert "char_length function with parameterized value is not supported on SQream" in str(e_info.value)
 
-    def test_coalesce(self):
+    def test_coalesce_not_supported(self):
 
         stmt = select(func.coalesce(None, None, None, 1))
         with pytest.raises(Exception) as e_info:
@@ -282,7 +329,7 @@ class TestOrmDto(TestBaseOrm):
 
         assert "coalesce function with parameterized value is not supported on SQream" in str(e_info.value)
 
-    def test_cube(self):
+    def test_cube_not_supported(self):
 
         stmt = select(func.sum(self.user.id), self.user.name, self.user.fullname
                 ).group_by(func.cube(self.user.name, self.user.fullname))
@@ -291,10 +338,16 @@ class TestOrmDto(TestBaseOrm):
                 session.execute(stmt)
         assert "cube function not supported on SQream" in str(e_info.value)
 
-    def test_collate(self):
-        pass
+    def test_current_user_not_supported(self):
 
-    def test_concat(self):
+        stmt = select(func.current_user())
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "current_user function not supported on SQream" in str(e_info.value)
+
+    def test_concat_not_supported(self):
 
         stmt = select(func.concat('a', 'b'))
         with pytest.raises(Exception) as e_info:
@@ -303,7 +356,31 @@ class TestOrmDto(TestBaseOrm):
 
         assert "concat function with parameterized value is not supported on SQream" in str(e_info.value)
 
+    def test_session_user_not_supported(self):
+
+        stmt = select(func.session_user())
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "session_user function not supported on SQream" in str(e_info.value)
+
+    def test_user_not_supported(self):
+
+        stmt = select(func.user())
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "user function not supported on SQream" in str(e_info.value)
+
     def test_distinct(self):
+
+        expected_stmt = f"SELECT DISTINCT {self.table1.c.id} \nFROM {self.table1}"
+        stmt = select(distinct(self.table1.c.id))
+        assert expected_stmt == str(stmt)
+
+    def test_cte(self):
         pass
 
     def test_true(self):
@@ -338,15 +415,158 @@ class TestOrmDto(TestBaseOrm):
     def test_in(self):
         pass
 
-    def test_like(self):
-        pass
+    # window_function tests
 
-    def test_window_function(self):
-        # https://docs.sqlalchemy.org/en/20/core/functions.html#sqlalchemy.sql.functions.Function
-        pass
+    def test_lag(self):
+
+        expected_stmt = f"SELECT lag(user_account.id) OVER (PARTITION BY user_account.name ORDER BY user_account.id) AS anon_1 " \
+                        f"\nFROM {self.user.__tablename__}"
+        stmt = select(func.lag(self.user.id).over(partition_by=self.user.name, order_by=self.user.id))
+        assert expected_stmt == str(stmt)
+
+    def test_lead(self):
+
+        expected_stmt = f"SELECT lead(user_account.id) OVER (PARTITION BY user_account.name ORDER BY user_account.id) AS anon_1 " \
+                        f"\nFROM {self.user.__tablename__}"
+        stmt = select(func.lead(self.user.id).over(partition_by=self.user.name, order_by=self.user.id))
+        assert expected_stmt == str(stmt)
+
+    def test_max(self):
+
+        expected_stmt = f"SELECT max(user_account.id) OVER (PARTITION BY user_account.name ORDER BY user_account.id) AS anon_1 " \
+                        f"\nFROM {self.user.__tablename__}"
+        stmt = select(func.max(self.user.id).over(partition_by=self.user.name, order_by=self.user.id))
+        assert expected_stmt == str(stmt)
+
+    def test_min(self):
+
+        expected_stmt = f"SELECT min(user_account.id) OVER (PARTITION BY user_account.name ORDER BY user_account.id) AS anon_1 " \
+                        f"\nFROM {self.user.__tablename__}"
+        stmt = select(func.min(self.user.id).over(partition_by=self.user.name, order_by=self.user.id))
+        assert expected_stmt == str(stmt)
+
+    def test_sum(self):
+
+        expected_stmt = f"SELECT sum(user_account.id) OVER (PARTITION BY user_account.name ORDER BY user_account.id) AS anon_1 " \
+                        f"\nFROM {self.user.__tablename__}"
+        stmt = select(func.sum(self.user.id).over(partition_by=self.user.name, order_by=self.user.id))
+        assert expected_stmt == str(stmt)
+
+    def test_first_value(self):
+
+        expected_stmt = f"SELECT first_value(user_account.id) OVER (ORDER BY user_account.id) AS anon_1 " \
+                        f"\nFROM {self.user.__tablename__}"
+        stmt = select(func.first_value(self.user.id).over(order_by=self.user.id))
+        assert expected_stmt == str(stmt)
+
+    def test_last_value(self):
+
+        expected_stmt = f"SELECT last_value(user_account.id) OVER (ORDER BY user_account.id) AS anon_1 " \
+                        f"\nFROM {self.user.__tablename__}"
+        stmt = select(func.last_value(self.user.id).over(order_by=self.user.id))
+        assert expected_stmt == str(stmt)
+
+    def test_row_number(self):
+        expected_stmt = f"SELECT row_number() OVER (PARTITION BY user_account.name " \
+                        f"ORDER BY user_account.id) AS anon_1 " \
+                        f"\nFROM {self.user.__tablename__}"
+        stmt = select(func.row_number().over(partition_by=self.user.name, order_by=self.user.id))
+        assert expected_stmt == str(stmt)
+
+    def test_nth_value_not_supported(self):
+
+        stmt = select(func.nth_value(self.user.id, 1).over(order_by=self.user.id))
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "nth_value function with parameterized value is not supported on SQream" in str(e_info.value)
+
+    def test_ntile_not_supported(self):
+        stmt = select(func.ntile(1).over(order_by=self.user.id))
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "ntile function with parameterized value is not supported on SQream" in str(e_info.value)
 
     def test_cume_dist(self):
-        pass
 
+        expected_stmt = f"SELECT {self.table1.c.id}, {self.table1.c.name}, {self.table1.c.value}, cume_dist() OVER " \
+                        f"(PARTITION BY {self.table1.c.name} ORDER BY {self.table1.c.value}) AS anon_1 " \
+                        f"\nFROM {self.table1.name}"
+        stmt = select(self.table1.c.id, self.table1.c.name, self.table1.c.value, func.cume_dist().over(
+            partition_by=self.table1.c.name, order_by=self.table1.c.value))
+        assert expected_stmt == str(stmt)
+
+    def test_dense_rank(self):
+
+        expected_stmt = f"SELECT {self.table1.c.id}, {self.table1.c.name}, {self.table1.c.value}, dense_rank() OVER " \
+                        f"(PARTITION BY {self.table1.c.name} ORDER BY {self.table1.c.value}) AS anon_1 " \
+                        f"\nFROM {self.table1.name}"
+        stmt = select(self.table1.c.id, self.table1.c.name, self.table1.c.value, func.dense_rank().over(
+            partition_by=self.table1.c.name, order_by=self.table1.c.value))
+        assert expected_stmt == str(stmt)
+
+    def test_mode(self):
+
+        expected_stmt = f"SELECT mode() WITHIN GROUP (ORDER BY {self.table1.c.value}) AS anon_1 " \
+                        f"\nFROM {self.table1.name}"
+        stmt = select(func.mode().within_group(self.table1.c.value))
+        assert expected_stmt == str(stmt)
+
+    def test_percent_rank(self):
+
+        expected_stmt = f"SELECT {self.table1.c.id}, {self.table1.c.name}, {self.table1.c.value}, percent_rank() OVER " \
+                        f"(PARTITION BY {self.table1.c.name} ORDER BY {self.table1.c.value}) AS anon_1 " \
+                        f"\nFROM {self.table1.name}"
+        stmt = select(self.table1.c.id, self.table1.c.name, self.table1.c.value, func.percent_rank().over(
+            partition_by=self.table1.c.name, order_by=self.table1.c.value))
+        assert expected_stmt == str(stmt)
+
+    def test_percentile_cont_not_supported(self):
+
+        stmt = select(func.percentile_cont(0.18).within_group(self.table1.c.value))
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "percentile_cont function with parameterized value is not supported on SQream" in str(e_info.value)
+
+    def test_percentile_disc_not_supported(self):
+
+        stmt = select(func.percentile_disc(0.18).within_group(self.table1.c.value))
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "percentile_disc function with parameterized value is not supported on SQream" in str(e_info.value)
+
+    def test_random_not_supported(self):
+
+        stmt = select(func.random())
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "random function not supported on SQream" in str(e_info.value)
+
+    def test_rank(self):
+
+        expected_stmt = f"SELECT {self.table1.c.id}, {self.table1.c.name}, {self.table1.c.value}, rank() OVER " \
+                        f"(PARTITION BY {self.table1.c.name} ORDER BY {self.table1.c.value}) AS anon_1 " \
+                        f"\nFROM {self.table1.name}"
+        stmt = select(self.table1.c.id, self.table1.c.name, self.table1.c.value, func.rank().over(
+            partition_by=self.table1.c.name, order_by=self.table1.c.value))
+        assert expected_stmt == str(stmt)
+
+    def test_rollup_not_supported(self):
+
+        stmt = select(func.rollup())
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "rollup function not supported on SQream" in str(e_info.value)
 
 
