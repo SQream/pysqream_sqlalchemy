@@ -4,11 +4,13 @@ import os, sys
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/pysqream_sqlalchemy/')
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/tests/')
 from test_base import TestBaseOrm
-from sqlalchemy import select, dialects, Table, Column, union_all, func, distinct, case, cast, Numeric
+from sqlalchemy import select, dialects, Table, Column, union_all, func, distinct, case, cast, Numeric, \
+    extract, nulls_first, desc, nulls_last, asc, true, false
 from sqlalchemy.sql import exists
 from sqlalchemy.orm import aliased, Session
 import sqlalchemy as sa
 import pytest
+from datetime import datetime
 
 
 dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
@@ -307,7 +309,7 @@ class TestOrmDto(TestBaseOrm):
 
     def test_array_agg(self):
 
-        expected_stmt = f"SELECT array_agg({self.user.__tablename__}.id) AS array_agg_1 FROM {self.user.__tablename__}"
+        expected_stmt = f"SELECT array_agg({self.user.__tablename__}.id) AS array_agg_1 \nFROM {self.user.__tablename__}"
         stmt = select(func.array_agg(self.user.id))
         assert expected_stmt == str(stmt)
 
@@ -381,42 +383,169 @@ class TestOrmDto(TestBaseOrm):
         assert expected_stmt == str(stmt)
 
     def test_cte(self):
-        pass
 
+        self.Base.metadata.drop_all(bind=self.engine)
+        self.Base.metadata.create_all(self.engine)
+
+        with Session(self.engine) as session:
+            patrick = self.user(id=3,
+                                name="patrick",
+                                fullname="Patrick Star")
+            session.add_all([patrick])
+            session.flush()
+
+        test_cte = select(
+            self.user.name,
+            func.sum(self.user.id).label('total_ids')
+        ).group_by(self.user.name).cte("test_cte")
+
+        stmt = select(test_cte)
+
+        with Session(self.engine) as session:
+            result = session.execute(stmt).all()
+
+        assert ('patrick', 3) == result[0], f"expected to get {('patrick', 3)}, got {result[0]}"
+
+    # sql.expression
     def test_true(self):
-        # sql.expression
-        pass
 
+        expected_stmt = f"SELECT {self.table1.c.id}, {self.table1.c.name}, {self.table1.c.value} " \
+                        f"\nFROM {self.table1} \nWHERE true"
+        stmt = select(self.table1).where(true())
+        assert expected_stmt == str(stmt)
+
+    # sql.expression
     def test_false(self):
-        # sql.expression
-        pass
+
+        expected_stmt = f"SELECT {self.table1.c.id}, {self.table1.c.name}, {self.table1.c.value} " \
+                        f"\nFROM {self.table1} \nWHERE false"
+        stmt = select(self.table1).where(false())
+        assert expected_stmt == str(stmt)
 
     def test_asc(self):
-        pass
+
+        expected_stmt = f"SELECT {self.table1.c.id}, {self.table1.c.name}, {self.table1.c.value} \nFROM {self.table1} " \
+                        f"ORDER BY {self.table1.c.name} ASC"
+        stmt = select(self.table1).order_by(asc(self.table1.c.name))
+        assert expected_stmt == str(stmt)
 
     def test_desc(self):
-        pass
+
+        expected_stmt = f"SELECT {self.table1.c.id}, {self.table1.c.name}, {self.table1.c.value} \nFROM {self.table1} " \
+                        f"ORDER BY {self.table1.c.name} DESC"
+        stmt = select(self.table1).order_by(desc(self.table1.c.name))
+        assert expected_stmt == str(stmt)
 
     def test_nulls_first_not_supported(self):
-        pass
+
+        stmt = select(self.user).order_by(nulls_first(desc(self.user.name)))
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "NULLS FIRST not supported on SQream" in str(e_info.value)
 
     def test_nulls_last_not_supported(self):
-        pass
+
+        stmt = select(self.user).order_by(nulls_last(desc(self.user.name)))
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+
+        assert "NULLS LAST not supported on SQream" in str(e_info.value)
 
     def test_extract(self):
-        pass
 
-    def test_contains(self):
-        pass
+        self.Base.metadata.drop_all(bind=self.engine)
+        self.Base.metadata.create_all(self.engine)
 
-    def test_endswith(self):
-        pass
+        with Session(self.engine) as session:
+            date_one = self.dates(id=1, dates=datetime.now())
+            date_two = self.dates(id=2, dates=datetime.now())
+            session.add_all([date_one, date_two])
+            session.flush()
 
-    def test_in(self):
-        pass
+        stmt = select(extract("YEAR", self.dates.dates))
+        with Session(self.engine) as session:
+            result = session.execute(stmt).all()
+
+        year = datetime.today().year
+        for row in result:
+            assert int(row[0]) == year, f"Wrong result expected to {year} got {int(row[0])}"
+
+    def test_where_extract_1(self):
+
+        stmt = select(extract("YEAR", self.dates.dates)).where(self.dates.id == 1)
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+        assert "Where clause of parameterized query not supported on SQream" in str(e_info.value)
+
+    def test_where_extract_2(self):
+
+        stmt = select(self.dates.id).where(extract("YEAR", self.dates.dates) == datetime.today().year)
+        with pytest.raises(Exception) as e_info:
+            with Session(self.engine) as session:
+                session.execute(stmt)
+        assert "Where clause of parameterized query not supported on SQream" in str(e_info.value)
+
+    #TODO - add test while supporting feature
+    # def test_in(self):
+    #     pass
+
+    #TODO - add test while supporting feature
+    # def test_not_in(self):
+    #     pass
+
+    #TODO - add test while supporting feature
+    # def test_endswith(self):
+    #     pass
+
+    #TODO - add test while supporting feature
+    # def test_not_endswith(self):
+    #     pass
+
+    #TODO - add test while supporting feature
+    # def test_startswith(self):
+    #     pass
+
+    #TODO - add test while supporting feature
+    # def test_not_startswith(self):
+    #     pass
+
+    #TODO - add test while supporting feature
+    # def test_like(self):
+    #     pass
+
+    #TODO - add test while supporting feature
+    # def test_not_like(self):
+    #     pass
+
+    #TODO - add test while supporting feature
+    # def test_ilike(self):
+    #     pass
+
+    #TODO - add test while supporting feature
+    # def test_not_ilike(self):
+    #     pass
+
+    #TODO - add test while supporting feature
+    # def test_between(self):
+    #     pass
+
+    #TODO - add test while supporting feature
+    # def test_not_between(self):
+    #     pass
+
+    #TODO - add test while supporting feature
+    # def test_contains(self):
+    #     pass
+
+    #TODO - add test while supporting feature
+    # def test_not_contains(self):
+    #     pass
 
     # window_function tests
-
     def test_lag(self):
 
         expected_stmt = f"SELECT lag(user_account.id) OVER (PARTITION BY user_account.name ORDER BY user_account.id) AS anon_1 " \

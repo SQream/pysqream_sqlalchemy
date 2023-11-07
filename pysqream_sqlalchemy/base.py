@@ -1,8 +1,8 @@
 
-from sqlalchemy.sql import compiler, crud, selectable, elements
+from sqlalchemy.sql import compiler, crud, selectable, elements, sqltypes
 from sqlalchemy import exc, util
 from sqlalchemy.dialects.mysql import TINYINT
-from sqlalchemy.sql.compiler import FUNCTIONS
+from sqlalchemy.sql.compiler import FUNCTIONS, OPERATORS
 
 
 class TINYINT(TINYINT):
@@ -393,6 +393,50 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
 
         return text
 
+    def visit_unary(
+        self, unary, add_to_result_map=None, result_map_targets=(), **kw
+    ):
+
+        if add_to_result_map is not None:
+            result_map_targets += (unary,)
+            kw["add_to_result_map"] = add_to_result_map
+            kw["result_map_targets"] = result_map_targets
+
+        if unary.operator:
+            if unary.modifier:
+                raise exc.CompileError(
+                    "Unary expression does not support operator "
+                    "and modifier simultaneously"
+                )
+
+            disp = self._get_operator_dispatch(
+                unary.operator, "unary", "operator"
+            )
+            if disp:
+                return disp(unary, unary.operator, **kw)
+            else:
+                return self._generate_generic_unary_operator(
+                    unary, OPERATORS[unary.operator], **kw
+                )
+        elif unary.modifier:
+            if str(OPERATORS[unary.modifier]).strip() in ['NULLS FIRST', 'NULLS LAST']:
+                raise NotSupportedException(f"{str(OPERATORS[unary.modifier]).strip()} not supported on SQream")
+
+            disp = self._get_operator_dispatch(
+                unary.modifier, "unary", "modifier"
+            )
+            if disp:
+                return disp(unary, unary.modifier, **kw)
+            else:
+                return self._generate_generic_unary_modifier(
+                    unary, OPERATORS[unary.modifier], **kw
+                )
+        else:
+            raise exc.CompileError(
+                "Unary expression has no operator or modifier"
+            )
+
+
     def visit_delete(self, delete_stmt, **kw):
         compile_state = delete_stmt._compile_state_factory(
             delete_stmt, self, **kw
@@ -402,7 +446,7 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             for cla in delete_stmt.whereclause.clauses:
                 if (hasattr(cla, "left") and hasattr(cla, "right")) and \
                         (hasattr(cla.left, "value") or (hasattr(cla.right, "value"))):
-                    raise NotSupportedException("Delete clause of parameterized query not supported on SQream")
+                    raise NotSupportedException("Where clause of parameterized query not supported on SQream")
 
         elif delete_stmt.whereclause is not None and \
                 (hasattr(delete_stmt.whereclause, "left") and hasattr(delete_stmt.whereclause, "right")) and (
@@ -675,10 +719,48 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
     def visit_localtimestamp_func(self, localtimestamp, **kw):
         return "CURRENT_TIMESTAMP"
 
+    def visit_contains_op_binary(self, binary, operator, **kw):
+        raise NotSupportedException("Like contains clause of parameterized query not supported on SQream")
+
+    def visit_not_contains_op_binary(self, binary, operator, **kw):
+        raise NotSupportedException("Not Like contains clause of parameterized query not supported on SQream")
+
+    def visit_startswith_op_binary(self, binary, operator, **kw):
+        raise NotSupportedException("Like startswith clause of parameterized query not supported on SQream")
+
+    def visit_not_startswith_op_binary(self, binary, operator, **kw):
+        raise NotSupportedException("Not Like startswith clause of parameterized query not supported on SQream")
+
+    def visit_endswith_op_binary(self, binary, operator, **kw):
+        raise NotSupportedException("Like endswith clause of parameterized query not supported on SQream")
+
+    def visit_not_endswith_op_binary(self, binary, operator, **kw):
+        raise NotSupportedException("Not Like endswith clause of parameterized query not supported on SQream")
+
     def visit_like_op_binary(self, binary, operator, **kw):
-        print(operator)
-        print(binary)
-        print("daniel")
+        raise NotSupportedException("Like clause of parameterized query not supported on SQream")
+
+    def visit_not_like_op_binary(self, binary, operator, **kw):
+        raise NotSupportedException("Not Like clause of parameterized query not supported on SQream")
+
+    def visit_ilike_op_binary(self, binary, operator, **kw):
+        raise NotSupportedException("ILike clause of parameterized query not supported on SQream")
+
+    def visit_not_ilike_op_binary(self, binary, operator, **kw):
+        raise NotSupportedException("Not ILike clause of parameterized query not supported on SQream")
+
+    def visit_between_op_binary(self, binary, operator, **kw):
+        raise NotSupportedException("Between clause of parameterized query not supported on SQream")
+
+    def visit_not_between_op_binary(self, binary, operator, **kw):
+        raise NotSupportedException("Not Between clause of parameterized query not supported on SQream")
+
+    def visit_in_op_binary(self, binary, operator, **kw):
+        raise NotSupportedException("In clause of parameterized query not supported on SQream")
+
+    def visit_not_in_op_binary(self, binary, operator, **kw):
+        raise NotSupportedException("Not In clause of parameterized query not supported on SQream")
+
 
 class SqreamDDLCompiler(compiler.DDLCompiler):
 

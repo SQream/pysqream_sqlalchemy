@@ -68,6 +68,10 @@ class TestBaseOrm(TestBase):
         return self.address
 
     @pytest.fixture()
+    def dates(self):
+        return self.dates
+
+    @pytest.fixture()
     def table1(self):
         return self.table1
 
@@ -78,6 +82,15 @@ class TestBaseOrm(TestBase):
     @pytest.fixture(autouse=True)
     def Test_setup_teardown(self, ip):
         self.Base = declarative_base()
+
+        class Dates(self.Base):
+            __tablename__ = "dates"
+
+            id = Column(Integer, Identity(start=0), primary_key=True)
+            dates = Column(sa.DateTime)
+
+            def __repr__(self):
+                return f"Dates(id={self.id!r}, dates={self.dates!r})"
 
         class User(self.Base):
             __tablename__ = "user_account"
@@ -101,6 +114,7 @@ class TestBaseOrm(TestBase):
 
         self.user = User
         self.address = Address
+        self.dates = Dates
 
         self.start(ip)
 
