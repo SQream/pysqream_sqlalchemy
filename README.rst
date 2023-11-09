@@ -15,7 +15,7 @@ Installing SQream SQLAlchemy
 
 .. code-block:: shell
 
-    pip3.9 install -sqlalchemy -U
+    pip3.9 install pysqream-sqlalchemy -U
 
 Verifying Installation
 ------------------------
