@@ -30,7 +30,7 @@ import pysqream.utils
 # from importlib import import_module, resources    # for importing and returning the module
 from sqlalchemy.engine.default import DefaultDialect, DefaultExecutionContext
 from sqlalchemy.types import Boolean, LargeBinary, SmallInteger, Integer, BigInteger, Float, Date, DateTime, String, Unicode, UnicodeText, Numeric
-from base import SqreamSQLCompiler, SqreamTypeCompiler, TINYINT, SqreamDDLCompiler
+from .base import SqreamSQLCompiler, SqreamTypeCompiler, TINYINT, SqreamDDLCompiler
 from sqlalchemy.dialects import registry
 from sqlalchemy.sql import compiler, crud
 
