@@ -1,6 +1,6 @@
 alembic>=1.10.2
 numpy>=1.20
 pandas>=1.5.3
-pysqream>=3.2.5
+pysqream==3.2.5
 setuptools>=57.4.0
 SQLAlchemy==1.4.46
