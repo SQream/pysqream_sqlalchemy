@@ -5,6 +5,13 @@ from sqlalchemy.dialects.mysql import TINYINT
 from sqlalchemy.sql.compiler import FUNCTIONS, OPERATORS
 
 
+NOT_SUPPORTED_OPERATORS = ['NULLS FIRST', 'NULLS LAST']
+NOT_SUPPORTED_FUNCTIONS = ['aggregate_strings', 'cube', 'current_time', 'current_user', 'grouping_sets', 'localtime',
+                           'next_value', 'random', 'rollup', 'session_user', 'user']
+NOT_SUPPORTED_PARAMETERIZED_FUNCTIONS = ['char_length', 'coalesce', 'concat', 'percentile_cont', 'percentile_disc',
+                                         'nth_value', 'ntile']
+
+
 class TINYINT(TINYINT):
     ''' Allows describing tables via the ORM mechanism. Complemented in
         SqreamTypeCompiler '''
@@ -419,7 +426,7 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
                     unary, OPERATORS[unary.operator], **kw
                 )
         elif unary.modifier:
-            if str(OPERATORS[unary.modifier]).strip() in ['NULLS FIRST', 'NULLS LAST']:
+            if str(OPERATORS[unary.modifier]).strip() in NOT_SUPPORTED_OPERATORS:
                 raise NotSupportedException(f"{str(OPERATORS[unary.modifier]).strip()} not supported on SQream")
 
             disp = self._get_operator_dispatch(
@@ -661,12 +668,10 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
         return text
 
     def visit_function(self, func, add_to_result_map=None, **kwargs):
-        if func.name in ['aggregate_strings', 'cube', 'current_time', 'current_user', 'grouping_sets', 'localtime',
-                         'next_value', 'random', 'rollup', 'session_user', 'user']:
+        if func.name in NOT_SUPPORTED_FUNCTIONS:
             raise NotSupportedException(f"{func.name} function not supported on SQream")
 
-        elif func.name in ['char_length', 'coalesce', 'concat', 'percentile_cont', 'percentile_disc', 'nth_value',
-                           'ntile']:
+        elif func.name in NOT_SUPPORTED_PARAMETERIZED_FUNCTIONS:
             raise NotSupportedException(f"{func.name} function with parameterized value is not supported on SQream")
 
         if add_to_result_map is not None:
