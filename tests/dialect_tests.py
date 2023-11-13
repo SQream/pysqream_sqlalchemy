@@ -4,26 +4,35 @@
 
 import os, sys
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/pysqream_sqlalchemy/')
+sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/tests/')
 from sqlalchemy import orm, create_engine, MetaData, inspect, Table, Column, select, insert, cast
 from sqlalchemy.schema import CreateTable   # Print ORM table DDLs
-from base import TestBase, TestBaseWithoutBeforeAfter, Logger
+from test_base import TestBase, Logger, TestBaseTI
 from alembic.runtime.migration import MigrationContext
 from alembic.operations import Operations
-
-import sqlalchemy as sa
-import pandas as pd
+import sqlalchemy as sa, pandas as pd
+# import pandas as pd
 from time import time
 from datetime import datetime, date, timezone as tz
 from decimal import Decimal
-
-# try:
-#     import pudb as pdb
-# except:
-#     import pdb
+import pytest
 
 
 ## Registering dialect
 sa.dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
+
+
+def find_diff(df1: pd.DataFrame, df2: pd.DataFrame):
+    """
+    Find the differance between two dataframes
+    """
+
+    if len(df1.index) != len(df2.index):
+        msg = f"Row count does not match\nSQream returned {len(df1.index)}\nremote returned: {len(df2.index)}"
+        return (False, msg)
+
+    res = df1.compare(df2, keep_equal=True)
+    return (True, "") if res.empty else (False, str(res))
 
 
 class TestSqlalchemy(TestBase):
@@ -35,7 +44,7 @@ class TestSqlalchemy(TestBase):
         sa.dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
         manual_conn_str = sa.engine.url.URL(
             'pysqream+dialect', username='sqream', password='sqream',
-            host=f'{self.ip}', port=5001, database='master')
+            host=f'{self.ip}', port=5000, database='master')
         engine2 = create_engine(manual_conn_str)
         res = engine2.execute('select 1')
         assert(all(row[0] == 1 for row in res))
@@ -86,6 +95,7 @@ class TestSqlalchemy(TestBase):
         # Insert into table
         values = [(True, 77, 777, 7777, 77777, 7.0, 7.77777777, date(2012, 11, 23), datetime(2012, 11, 23, 16, 34, 56),
                    'bla', 'בלה', Decimal("1.1")),] * 2
+
         orm_table.insert().values(values).execute()
 
         # Validate results
@@ -215,3 +225,60 @@ class TestAlembic(TestBase):
 
         res = self.engine.execute('select * from waste').fetchall()
         assert(res == [tuple(dikt.values()) for dikt in data])
+
+
+class TestTI(TestBaseTI):
+
+    @pytest.fixture()
+    def path(self):
+        return "data/LBC9_PLV_affinity_matrix_send.csv"
+
+    @pytest.fixture()
+    def insert_data(self, path):
+        return pd.read_csv(path).to_dict('records')
+
+    def test_ti_1(self, path, insert_data):
+
+        ins = self.testware_affinity_matrix.insert(insert_data)
+        self.engine.execute(ins)
+        res = self.engine.execute(self.testware_affinity_matrix.select()).fetchall()
+        res_df = pd.DataFrame(res, columns=['technology', 'criteria', 'category', 'component',
+                                            'svn', 'parm_name', 'lpt', 'tech', 'severity'])
+        expected_df = pd.read_csv(path)
+        is_equal, msg_results = find_diff(expected_df, res_df)
+        assert is_equal, msg_results
+
+    def test_ti_2(self, path, insert_data):
+
+        ins = self.testware_affinity_matrix.insert()
+        self.engine.execute(ins, insert_data)
+        res = self.engine.execute(self.testware_affinity_matrix.select()).fetchall()
+        res_df = pd.DataFrame(res, columns=['technology', 'criteria', 'category', 'component',
+                                            'svn', 'parm_name', 'lpt', 'tech', 'severity'])
+        expected_df = pd.read_csv(path)
+        is_equal, msg_results = find_diff(expected_df, res_df)
+        assert is_equal, msg_results
+
+
+class TestNew(TestBase):
+
+    def test_1(self):
+
+        table1 = Table(
+            'table1', self.metadata,
+            Column("id", sa.Integer), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+        )
+        if self.engine.has_table(table1.name):
+            table1.drop()
+
+        table1.create()
+
+        # Insert into table
+        values = [(1, 'str', 2)]
+
+        table1.insert().values(values).execute()
+
+        # stmt = table1.delete().where(table1.c.id == '1')
+        stmt = table1.select().where(table1.c.id == '1')
+        print(stmt)
+        # self.engine.execute(stmt)
