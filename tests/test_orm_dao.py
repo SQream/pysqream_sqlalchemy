@@ -12,7 +12,6 @@ dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
 
 
 class TestOrmDao(TestBaseOrm):
-
     def test_drop_all(self):
         self.Base.metadata.drop_all(bind=self.engine)
 
@@ -25,7 +24,7 @@ class TestOrmDao(TestBaseOrm):
             'table3', self.metadata,
             Column("id", sa.Integer, Identity(start=0)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
-        if self.engine.has_table(table3.name):
+        if self.insp.has_table(table3.name):
             table3.drop()
         table3.create()
 
@@ -34,7 +33,7 @@ class TestOrmDao(TestBaseOrm):
             'table3', self.metadata,
             Column("id", sa.Integer, Identity(start=1, minvalue=1)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
-        if self.engine.has_table(table3.name):
+        if self.insp.has_table(table3.name):
             table3.drop()
 
         with pytest.raises(Exception) as e_info:
@@ -47,7 +46,7 @@ class TestOrmDao(TestBaseOrm):
             'table3', self.metadata,
             Column("id", sa.Integer, Identity(start=1, maxvalue=10)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
-        if self.engine.has_table(table3.name):
+        if self.insp.has_table(table3.name):
             table3.drop()
 
         with pytest.raises(Exception) as e_info:
@@ -60,7 +59,7 @@ class TestOrmDao(TestBaseOrm):
             'table3', self.metadata,
             Column("id", sa.Integer, Identity(start=1, nomaxvalue=10)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
-        if self.engine.has_table(table3.name):
+        if self.insp.has_table(table3.name):
             table3.drop()
 
         with pytest.raises(Exception) as e_info:
@@ -73,7 +72,7 @@ class TestOrmDao(TestBaseOrm):
             'table3', self.metadata,
             Column("id", sa.Integer, Identity(start=1, nominvalue=10)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
-        if self.engine.has_table(table3.name):
+        if self.insp.has_table(table3.name):
             table3.drop()
 
         with pytest.raises(Exception) as e_info:
@@ -86,7 +85,7 @@ class TestOrmDao(TestBaseOrm):
             'table3', self.metadata,
             Column("id", sa.Integer, Identity(start=1, cache=5)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
-        if self.engine.has_table(table3.name):
+        if self.insp.has_table(table3.name):
             table3.drop()
 
         with pytest.raises(Exception) as e_info:
@@ -99,7 +98,7 @@ class TestOrmDao(TestBaseOrm):
             'table3', self.metadata,
             Column("id", sa.Integer, Identity(start=1, order=True)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
-        if self.engine.has_table(table3.name):
+        if self.insp.has_table(table3.name):
             table3.drop()
 
         with pytest.raises(Exception) as e_info:
@@ -112,7 +111,7 @@ class TestOrmDao(TestBaseOrm):
             'table3', self.metadata,
             Column("id", sa.Integer, Identity(start=1, cycle=6)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
-        if self.engine.has_table(table3.name):
+        if self.insp.has_table(table3.name):
             table3.drop()
 
         with pytest.raises(Exception) as e_info:
@@ -125,7 +124,7 @@ class TestOrmDao(TestBaseOrm):
             'table3', self.metadata,
             Column("id", sa.Integer, ForeignKey("table1.id")), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
-        if self.engine.has_table(table3.name):
+        if self.insp.has_table(table3.name):
             table3.drop()
 
         with pytest.raises(Exception) as e_info:
@@ -138,7 +137,7 @@ class TestOrmDao(TestBaseOrm):
             'table3', self.metadata,
             Column("id", sa.Integer, primary_key=True), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
-        if self.engine.has_table(table3.name):
+        if self.insp.has_table(table3.name):
             table3.drop()
 
         with pytest.raises(Exception) as e_info:

@@ -9,7 +9,7 @@ from sqlalchemy import Table, Column, String, Integer, ForeignKey, Sequence, Ide
 from sqlalchemy.orm import declarative_base, relationship, IdentityMap
 
 
-def connect(ip, clustered=False, use_ssl=False, port=5000):
+def connect(ip, port, clustered=False, use_ssl=False):
     print_echo = False
     conn_str = f"pysqream+dialect://sqream:sqream@{ip}:{port}/master"
     engine = create_engine(conn_str, echo=print_echo, connect_args={"clustered": clustered, "use_ssl": use_ssl})
@@ -25,23 +25,28 @@ def setTinyint(engine):
 
 
 class TestBase:
-
     @pytest.fixture()
     def ip(self, pytestconfig):
         return pytestconfig.getoption("ip")
 
+    @pytest.fixture()
+    def port(self, pytestconfig):
+        return pytestconfig.getoption("port")
+
     @pytest.fixture(autouse=True)
-    def Test_setup_teardown(self, ip):
-        self.start(ip)
+    def Test_setup_teardown(self, ip, port):
+        self.start(ip, port)
         yield
         self.stop()
 
-    def start(self, ip):
+    def start(self, ip, port):
         ip = ip if ip else socket.gethostbyname(socket.gethostname())
         Logger().info("Before Scenario")
-        Logger().info(f"Connect to server {ip}")
+        Logger().info(f"Connect to server {ip}:{port}")
         self.ip = ip
-        self.engine, self.metadata, self.session, self.conn_str = connect(ip)
+        self.port = port
+        self.engine, self.metadata, self.session, self.conn_str = connect(ip, port)
+        self.insp = sa.inspect(self.engine)
         setTinyint(self.engine)
 
     def stop(self):
@@ -50,7 +55,6 @@ class TestBase:
 
 
 class TestBaseOrm(TestBase):
-
     @pytest.fixture()
     def ip(self, pytestconfig):
         return pytestconfig.getoption("ip")
@@ -80,7 +84,7 @@ class TestBaseOrm(TestBase):
         return self.table2
 
     @pytest.fixture(autouse=True)
-    def Test_setup_teardown(self, ip):
+    def Test_setup_teardown(self, ip, port):
         self.Base = declarative_base()
 
         class Dates(self.Base):
@@ -116,7 +120,7 @@ class TestBaseOrm(TestBase):
         self.address = Address
         self.dates = Dates
 
-        self.start(ip)
+        self.start(ip, port)
 
         self.table1 = Table(
             'table1', self.metadata,
@@ -133,7 +137,6 @@ class TestBaseOrm(TestBase):
 
 
 class TestBaseTI(TestBase):
-
     @pytest.fixture()
     def ip(self, pytestconfig):
         return pytestconfig.getoption("ip")
@@ -143,18 +146,12 @@ class TestBaseTI(TestBase):
         return self.testware_affinity_matrix
 
     @pytest.fixture(autouse=True)
-    def Test_setup_teardown(self, ip):
-        self.start(ip)
-
-        metadata = MetaData(schema="rfab_ie")
-        metadata.bind = self.engine
-
-        if not self.engine.dialect.has_schema(self.engine, metadata.schema):
-            self.engine.execute(sa.schema.CreateSchema(metadata.schema))
+    def Test_setup_teardown(self, ip, port):
+        self.start(ip, port)
 
         self.testware_affinity_matrix = sa.Table(
             'testware_affinity_matrix'
-            , metadata
+            , self.metadata
             , sa.Column('technology', sa.TEXT(32))
             , sa.Column('criteria', sa.TEXT(32))
             , sa.Column('category', sa.TEXT(32))
@@ -166,10 +163,10 @@ class TestBaseTI(TestBase):
             , sa.Column('severity', sa.Float)
         )
 
-        if self.engine.has_table(self.testware_affinity_matrix.name):
+        if self.insp.has_table(self.testware_affinity_matrix.name):
             self.testware_affinity_matrix.drop()
 
-        self.testware_affinity_matrix.create()
+        self.metadata.create_all(bind=self.engine)
 
         yield
         self.stop()

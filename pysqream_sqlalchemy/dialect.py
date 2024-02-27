@@ -30,7 +30,7 @@ import pysqream.utils
 # from importlib import import_module, resources    # for importing and returning the module
 from sqlalchemy.engine.default import DefaultDialect, DefaultExecutionContext
 from sqlalchemy.types import Boolean, LargeBinary, SmallInteger, Integer, BigInteger, Float, Date, DateTime, String, Unicode, UnicodeText, Numeric
-from .base import SqreamSQLCompiler, SqreamTypeCompiler, TINYINT, SqreamDDLCompiler
+from base import SqreamSQLCompiler, SqreamTypeCompiler, TINYINT, SqreamDDLCompiler
 from sqlalchemy.dialects import registry
 from sqlalchemy.sql import compiler, crud
 
@@ -111,7 +111,7 @@ class SqreamDialect(DefaultDialect):
             from pysqream import pysqream as pysqream
         except ImportError:
             import pysqream
-
+        setattr(pysqream, "Error", Exception)
         return pysqream
 
     def initialize(self, connection):
@@ -180,7 +180,6 @@ class SqreamDialect(DefaultDialect):
         return columns_meta
 
     def do_execute(self, cursor, statement, parameters, context=None):
-
         if statement.lower().startswith('insert') and '?' in statement: # and type(parameters[0] not in (tuple, list)):
             cursor.executemany(statement, parameters, data_as='alchemy_flat_list')
         else:

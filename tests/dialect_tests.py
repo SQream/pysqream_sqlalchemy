@@ -1,24 +1,23 @@
 ''' Testing the SQream SQLAlchemy dialect. See also tests for the SQream
     DB-API connector 
 '''
-
-import os, sys
+import logging
+import os
+import sys
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/pysqream_sqlalchemy/')
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/tests/')
-from sqlalchemy import orm, create_engine, MetaData, inspect, Table, Column, select, insert, cast
-from sqlalchemy.schema import CreateTable   # Print ORM table DDLs
+import pytest
+import pandas as pd
+import sqlalchemy as sa
+from sqlalchemy import create_engine, MetaData, inspect, Table, Column, select, text
 from test_base import TestBase, Logger, TestBaseTI
 from alembic.runtime.migration import MigrationContext
 from alembic.operations import Operations
-import sqlalchemy as sa, pandas as pd
-# import pandas as pd
-from time import time
 from datetime import datetime, date, timezone as tz
 from decimal import Decimal
-import pytest
 
 
-## Registering dialect
+# Registering dialect
 sa.dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
 
 
@@ -26,45 +25,45 @@ def find_diff(df1: pd.DataFrame, df2: pd.DataFrame):
     """
     Find the differance between two dataframes
     """
-
     if len(df1.index) != len(df2.index):
         msg = f"Row count does not match\nSQream returned {len(df1.index)}\nremote returned: {len(df2.index)}"
-        return (False, msg)
+        return False, msg
 
     res = df1.compare(df2, keep_equal=True)
     return (True, "") if res.empty else (False, str(res))
 
 
 class TestSqlalchemy(TestBase):
-
     def test_sqlalchemy(self):
-
         Logger().info('SQLAlchemy direct query tests')
         # Test 0 - as bestowed upon me by Yuval. Using the URL object directly instead of a connection string
         sa.dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
-        manual_conn_str = sa.engine.url.URL(
-            'pysqream+dialect', username='sqream', password='sqream',
-            host=f'{self.ip}', port=5000, database='master')
+        manual_conn_str = sa.engine.url.URL('pysqream+dialect',
+                                            username='sqream',
+                                            password='sqream',
+                                            host=f'{self.ip}',
+                                            port=f'{self.port}',
+                                            database='master')
         engine2 = create_engine(manual_conn_str)
         res = engine2.execute('select 1')
-        assert(all(row[0] == 1 for row in res))
+        assert (all(row[0] == 1 for row in res))
 
         # Simple direct Engine query - this passes the queries to the underlying DB-API
-        res = self.engine.execute('create or replace table "kOko" ("iNts fosho" int not null)')
-        res = self.engine.execute('insert into "kOko" values (1),(2),(3),(4),(5)')
+        self.engine.execute('create or replace table "kOko" ("iNts fosho" int not null)')
+        self.engine.execute('insert into "kOko" values (1),(2),(3),(4),(5)')
         res = self.engine.execute('select * from "kOko"')
+
         # Using the underlying DB-API fetch() functions
-        assert(res.fetchone() == (1,))
-        assert(res.fetchmany(2) == [(2,), (3,)])
-        assert(res.fetchall() == [(4,), (5,)])
+        assert (res.fetchone() == (1,))
+        assert (res.fetchmany(2) == [(2,), (3,)])
+        assert (res.fetchall() == [(4,), (5,)])
 
         # Reflection test
-        inspector = inspect(self.engine)
-        inspected_cols = inspector.get_columns('kOko')
+        inspected_cols = self.insp.get_columns('kOko')
         assert (inspected_cols[0]['name'] == 'iNts fosho')
 
         self.metadata.reflect(bind=self.engine)
-        assert(repr(self.metadata.tables["kOko"]) == f"Table('kOko', MetaData(bind=Engine(pysqream+dialect://sqream:***@{self.ip}:5000/master)), Column('iNts fosho', Integer(), table=<kOko>, nullable=False), schema=None)")
+        assert (repr(self.metadata.tables["kOko"]) == f"Table('kOko', MetaData(bind=Engine(pysqream+dialect://sqream:***@{self.ip}:{self.port}/master)), Column('iNts fosho', Integer(), table=<kOko>, nullable=False), schema=None)")
 
         Logger().info('SQLAlchemy ORM tests')
         # ORM queries - test that correct SQream queries (SQL text strings) are
@@ -85,7 +84,7 @@ class TestSqlalchemy(TestBase):
             Column('varchars', sa.String(10)),
             Column('nvarchars', sa.UnicodeText),
             Column('numerics', sa.Numeric(38, 10)),
-            extend_existing = True
+            extend_existing=True
         )
         if self.engine.has_table(orm_table.name):
             orm_table.drop()
@@ -100,14 +99,14 @@ class TestSqlalchemy(TestBase):
 
         # Validate results
         res = self.engine.execute(orm_table.select()).fetchall()
-        assert(values == res)
+        assert values == res
 
         # Run a simple join query
         t2 = orm_table.alias()
         joined = orm_table.join(t2, orm_table.columns.iNts == t2.columns.iNts, isouter=False)
         # orm_table.select().select_from(joined).execute()
         res = joined.select().execute().fetchall()
-        assert(len(res) == 2 * len(values))
+        assert (len(res) == 2 * len(values))
 
 
 ## Pandas tests
@@ -115,27 +114,25 @@ class TestSqlalchemy(TestBase):
 
 
 class TestPandas(TestBase):
-
     def test_pandas(self):
-
         # Creating a SQream table from a Pandas DataFrame
         Logger().info('Pandas tests')
         df = pd.DataFrame({
-            'bools': [True,False],
-            'ubytes': [10,11],
-            'shorts': [110,111],
-            'ints': [1110,1111],
-            'bigints': [1111110,11111111],
-            'floats': [10.0,11.0],
-            'doubles': [10.1111111,11.1111111],
-            'dates': [date(2012, 11, 23),date(2012, 11, 23)],
-            'datetimes':  [datetime(2012, 11, 23, 16, 34, 56),datetime(2012, 11, 23, 16, 34, 56)],
-            'varchars':  ['koko','koko2'],
-            'nvarchars':  ['shoko','shoko2'],
+            'bools': [True, False],
+            'ubytes': [10, 11],
+            'shorts': [110, 111],
+            'ints': [1110, 1111],
+            'bigints': [1111110, 11111111],
+            'floats': [10.0, 11.0],
+            'doubles': [10.1111111, 11.1111111],
+            'dates': [date(2012, 11, 23), date(2012, 11, 23)],
+            'datetimes':  [datetime(2012, 11, 23, 16, 34, 56), datetime(2012, 11, 23, 16, 34, 56)],
+            'varchars':  ['koko', 'koko2'],
+            'nvarchars':  ['shoko', 'shoko2'],
             'numerics': [Decimal("1.1"), Decimal("-1.1")]
         })
 
-        dtype={
+        dtype = {
             'bools': sa.Boolean,
             'ubytes': sa.Tinyint,
             'shorts': sa.SmallInteger,
@@ -160,11 +157,10 @@ class TestPandas(TestBase):
         assert ((res2 == df).eq(True).all()[0])
 
 
-## Alembic tests
+# Alembic tests
 #  -------------
 
 class TestAlembic(TestBase):
-
     def test_alembic(self):
         Logger().info('Alembic tests')
         conn = self.engine.connect()
@@ -224,21 +220,20 @@ class TestAlembic(TestBase):
         op.bulk_insert(t, data)
 
         res = self.engine.execute('select * from waste').fetchall()
-        assert(res == [tuple(dikt.values()) for dikt in data])
+        assert (res == [tuple(dikt.values()) for dikt in data])
 
 
 class TestTI(TestBaseTI):
 
     @pytest.fixture()
     def path(self):
-        return "data/LBC9_PLV_affinity_matrix_send.csv"
+        return f"{os.getcwd()}/tests/data/LBC9_PLV_affinity_matrix_send.csv"
 
     @pytest.fixture()
     def insert_data(self, path):
         return pd.read_csv(path).to_dict('records')
 
     def test_ti_1(self, path, insert_data):
-
         ins = self.testware_affinity_matrix.insert(insert_data)
         self.engine.execute(ins)
         res = self.engine.execute(self.testware_affinity_matrix.select()).fetchall()
@@ -249,7 +244,6 @@ class TestTI(TestBaseTI):
         assert is_equal, msg_results
 
     def test_ti_2(self, path, insert_data):
-
         ins = self.testware_affinity_matrix.insert()
         self.engine.execute(ins, insert_data)
         res = self.engine.execute(self.testware_affinity_matrix.select()).fetchall()
@@ -261,24 +255,21 @@ class TestTI(TestBaseTI):
 
 
 class TestNew(TestBase):
-
     def test_1(self):
-
         table1 = Table(
             'table1', self.metadata,
-            Column("id", sa.Integer), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+            Column("id", sa.Integer), Column("name", sa.UnicodeText), Column("value2", sa.Integer)
         )
-        if self.engine.has_table(table1.name):
+        if self.insp.has_table(table1.name):
             table1.drop()
 
         table1.create()
 
         # Insert into table
-        values = [(1, 'str', 2)]
+        values = [(1, 'test', 2)]
 
         table1.insert().values(values).execute()
 
-        # stmt = table1.delete().where(table1.c.id == '1')
-        stmt = table1.select().where(table1.c.id == '1')
-        print(stmt)
-        # self.engine.execute(stmt)
+        stmt = table1.select(whereclause=text("id=1"))
+        res = self.engine.execute(stmt).fetchall()
+        assert res == values, res
