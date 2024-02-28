@@ -9,7 +9,7 @@ sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/tests/')
 import pytest
 import pandas as pd
 import sqlalchemy as sa
-from sqlalchemy import create_engine, MetaData, inspect, Table, Column, select, text
+from sqlalchemy import create_engine, MetaData, select, Table, Column, insert, text, DDL, orm
 from test_base import TestBase, Logger, TestBaseTI
 from alembic.runtime.migration import MigrationContext
 from alembic.operations import Operations
@@ -38,20 +38,21 @@ class TestSqlalchemy(TestBase):
         Logger().info('SQLAlchemy direct query tests')
         # Test 0 - as bestowed upon me by Yuval. Using the URL object directly instead of a connection string
         sa.dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
-        manual_conn_str = sa.engine.url.URL('pysqream+dialect',
-                                            username='sqream',
-                                            password='sqream',
-                                            host=f'{self.ip}',
-                                            port=f'{self.port}',
-                                            database='master')
+        manual_conn_str = sa.engine.url.URL.create(drivername='pysqream+dialect',
+                                                   username='sqream',
+                                                   password='sqream',
+                                                   host=f'{self.ip}',
+                                                   port=self.port,
+                                                   database='master')
         engine2 = create_engine(manual_conn_str)
-        res = engine2.execute('select 1')
+        session2 = orm.sessionmaker(bind=engine2)()
+        res = session2.execute(DDL('select 1'))
         assert (all(row[0] == 1 for row in res))
 
         # Simple direct Engine query - this passes the queries to the underlying DB-API
-        self.engine.execute('create or replace table "kOko" ("iNts fosho" int not null)')
-        self.engine.execute('insert into "kOko" values (1),(2),(3),(4),(5)')
-        res = self.engine.execute('select * from "kOko"')
+        self.session.execute(DDL('create or replace table "kOko" ("iNts fosho" int not null)'))
+        self.session.execute(DDL('insert into "kOko" values (1),(2),(3),(4),(5)'))
+        res = self.session.execute(DDL('select * from "kOko"'))
 
         # Using the underlying DB-API fetch() functions
         assert (res.fetchone() == (1,))
@@ -63,7 +64,7 @@ class TestSqlalchemy(TestBase):
         assert (inspected_cols[0]['name'] == 'iNts fosho')
 
         self.metadata.reflect(bind=self.engine)
-        assert (repr(self.metadata.tables["kOko"]) == f"Table('kOko', MetaData(bind=Engine(pysqream+dialect://sqream:***@{self.ip}:{self.port}/master)), Column('iNts fosho', Integer(), table=<kOko>, nullable=False), schema=None)")
+        assert (repr(self.metadata.tables["kOko"]) == "Table('kOko', MetaData(), Column('iNts fosho', Integer(), table=<kOko>, nullable=False), schema=None)")
 
         Logger().info('SQLAlchemy ORM tests')
         # ORM queries - test that correct SQream queries (SQL text strings) are
@@ -83,30 +84,31 @@ class TestSqlalchemy(TestBase):
             Column('datetimes', sa.DateTime),
             Column('varchars', sa.String(10)),
             Column('nvarchars', sa.UnicodeText),
-            Column('numerics', sa.Numeric(38, 10)),
+            Column('numerics', sa.Numeric(38, 1)),
             extend_existing=True
         )
-        if self.engine.has_table(orm_table.name):
-            orm_table.drop()
+        if self.insp.has_table(orm_table.name):
+            orm_table.drop(bind=self.engine)
 
-        orm_table.create()
+        orm_table.create(bind=self.engine)
 
         # Insert into table
         values = [(True, 77, 777, 7777, 77777, 7.0, 7.77777777, date(2012, 11, 23), datetime(2012, 11, 23, 16, 34, 56),
-                   'bla', 'בלה', Decimal("1.1")),] * 2
+                   'bla', 'בלה', Decimal('1.1')),] * 2
 
-        orm_table.insert().values(values).execute()
+        stmt = orm_table.insert().values(values)
+        self.session.execute(stmt)
 
         # Validate results
-        res = self.engine.execute(orm_table.select()).fetchall()
+        res = self.session.execute(orm_table.select()).fetchall()
         assert values == res
 
         # Run a simple join query
         t2 = orm_table.alias()
         joined = orm_table.join(t2, orm_table.columns.iNts == t2.columns.iNts, isouter=False)
-        # orm_table.select().select_from(joined).execute()
-        res = joined.select().execute().fetchall()
-        assert (len(res) == 2 * len(values))
+        stmt = joined.select()
+        res = self.session.execute(stmt).fetchall()
+        assert (len(res) == len(values) * 2)
 
 
 ## Pandas tests
@@ -163,8 +165,8 @@ class TestPandas(TestBase):
 class TestAlembic(TestBase):
     def test_alembic(self):
         Logger().info('Alembic tests')
-        conn = self.engine.connect()
-        ctx = MigrationContext.configure(conn)
+        session = self.session.connection()
+        ctx = MigrationContext.configure(session)
         op = Operations(ctx)
 
         try:
@@ -219,7 +221,7 @@ class TestAlembic(TestBase):
 
         op.bulk_insert(t, data)
 
-        res = self.engine.execute('select * from waste').fetchall()
+        res = self.session.execute(text('select * from waste')).fetchall()
         assert (res == [tuple(dikt.values()) for dikt in data])
 
 
@@ -234,9 +236,9 @@ class TestTI(TestBaseTI):
         return pd.read_csv(path).to_dict('records')
 
     def test_ti_1(self, path, insert_data):
-        ins = self.testware_affinity_matrix.insert(insert_data)
-        self.engine.execute(ins)
-        res = self.engine.execute(self.testware_affinity_matrix.select()).fetchall()
+        ins = insert(self.testware_affinity_matrix).values(insert_data)
+        self.session.execute(ins)
+        res = self.session.execute(self.testware_affinity_matrix.select()).fetchall()
         res_df = pd.DataFrame(res, columns=['technology', 'criteria', 'category', 'component',
                                             'svn', 'parm_name', 'lpt', 'tech', 'severity'])
         expected_df = pd.read_csv(path)
@@ -245,8 +247,8 @@ class TestTI(TestBaseTI):
 
     def test_ti_2(self, path, insert_data):
         ins = self.testware_affinity_matrix.insert()
-        self.engine.execute(ins, insert_data)
-        res = self.engine.execute(self.testware_affinity_matrix.select()).fetchall()
+        self.session.execute(ins, insert_data)
+        res = self.session.execute(self.testware_affinity_matrix.select()).fetchall()
         res_df = pd.DataFrame(res, columns=['technology', 'criteria', 'category', 'component',
                                             'svn', 'parm_name', 'lpt', 'tech', 'severity'])
         expected_df = pd.read_csv(path)
@@ -261,15 +263,16 @@ class TestNew(TestBase):
             Column("id", sa.Integer), Column("name", sa.UnicodeText), Column("value2", sa.Integer)
         )
         if self.insp.has_table(table1.name):
-            table1.drop()
+            table1.drop(bind=self.engine)
 
-        table1.create()
+        table1.create(bind=self.engine)
 
         # Insert into table
         values = [(1, 'test', 2)]
 
-        table1.insert().values(values).execute()
+        ins = insert(table1).values(values)
+        self.session.execute(ins)
 
-        stmt = table1.select(whereclause=text("id=1"))
-        res = self.engine.execute(stmt).fetchall()
+        stmt = select(table1).where(text("id=1"))
+        res = self.session.execute(stmt).fetchall()
         assert res == values, res

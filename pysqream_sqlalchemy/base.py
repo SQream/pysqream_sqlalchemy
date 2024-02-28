@@ -61,7 +61,7 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
         )
 
         crud_params = crud._get_crud_params(
-            self, insert_stmt, compile_state, **kw
+            self, insert_stmt, compile_state, toplevel, **kw
         )
 
         if (
@@ -71,23 +71,18 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             and not self.dialect.supports_empty_insert
         ):
             raise exc.CompileError(
-                "The '%s' dialect with current database "
+                f"The {self.dialect.name} dialect with current database "
                 "version settings does not support empty "
-                "inserts." % self.dialect.name
+                "inserts."
             )
 
-        if compile_state._has_multi_parameters:
-            if not self.dialect.supports_multivalues_insert:
-                raise exc.CompileError(
-                    "The '%s' dialect with current database "
-                    "version settings does not support "
-                    "in-place multirow inserts." % self.dialect.name
-                )
-            crud_params_single = crud_params[0]
-        else:
-            crud_params_single = crud_params
-
-        preparer = self.preparer
+        if not self.dialect.supports_multivalues_insert:
+            raise exc.CompileError(
+                f"The {self.dialect.name} dialect with current database "
+                "version settings does not support "
+                "in-place multirow inserts."
+            )
+        crud_params_single = crud_params.single_params
         supports_default_values = self.dialect.supports_default_values
 
         text = "INSERT "
@@ -98,7 +93,7 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             )
 
         text += "INTO "
-        table_text = preparer.format_table(insert_stmt.table)
+        table_text = self.preparer.format_table(insert_stmt.table)
 
         if insert_stmt._hints:
             _, table_text = self._setup_crud_hints(insert_stmt, table_text)
@@ -111,7 +106,7 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
 
         if crud_params_single or not supports_default_values:
             text += " (%s)" % ", ".join(
-                [expr for c, expr, value in crud_params_single]
+                [expr for c, expr, value, params in crud_params_single]
             )
 
         if self.returning or insert_stmt._returning:
@@ -136,7 +131,6 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
                     self._render_cte_clause(
                         nesting_level=nesting_level,
                         include_following_stack=True,
-                        visiting_cte=kw.get("visiting_cte"),
                     ),
                     select_text,
                 )
@@ -149,18 +143,18 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
         # does not support
         # <Overriding part> - money is in crud_params[0]
         elif compile_state._has_multi_parameters:
-            insert_single_values_expr = ", ".join([c[2] for c in crud_params[0]])
+            insert_single_values_expr = ", ".join([c[2] for c in crud_params.single_params])
             text += " VALUES (%s)" % insert_single_values_expr
             if toplevel:
-                self.insert_single_values_expr = insert_single_values_expr
+                setattr(SqreamSQLCompiler, insert_single_values_expr, insert_single_values_expr)
         # </Overriding part>
         else:
             insert_single_values_expr = ", ".join(
-                [value for c, expr, value in crud_params]
+                [value for c, expr, value, params in crud_params.single_params]
             )
             text += " VALUES (%s)" % insert_single_values_expr
             if toplevel:
-                self.insert_single_values_expr = insert_single_values_expr
+                setattr(SqreamSQLCompiler, insert_single_values_expr, insert_single_values_expr)
 
         if insert_stmt._post_values_clause is not None:
             post_values_clause = self.process(
@@ -178,7 +172,6 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
                 self._render_cte_clause(
                     nesting_level=nesting_level,
                     include_following_stack=True,
-                    visiting_cte=kw.get("visiting_cte"),
                 )
                 + text
             )
@@ -386,7 +379,6 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             text = (
                 self._render_cte_clause(
                     nesting_level=nesting_level,
-                    visiting_cte=kwargs.get("visiting_cte"),
                 )
                 + text
             )
@@ -538,7 +530,6 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             text = (
                 self._render_cte_clause(
                     nesting_level=nesting_level,
-                    visiting_cte=kw.get("visiting_cte"),
                 )
                 + text
             )
@@ -658,7 +649,6 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             text = (
                 self._render_cte_clause(
                     nesting_level=nesting_level,
-                    visiting_cte=kw.get("visiting_cte"),
                 )
                 + text
             )

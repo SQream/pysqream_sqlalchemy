@@ -25,8 +25,8 @@ class TestOrmDao(TestBaseOrm):
             Column("id", sa.Integer, Identity(start=0)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
         if self.insp.has_table(table3.name):
-            table3.drop()
-        table3.create()
+            table3.drop(bind=self.engine)
+        table3.create(bind=self.engine)
 
     def test_create_table_with_identity_minvalue_not_supported(self):
         table3 = Table(
@@ -34,10 +34,10 @@ class TestOrmDao(TestBaseOrm):
             Column("id", sa.Integer, Identity(start=1, minvalue=1)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
         if self.insp.has_table(table3.name):
-            table3.drop()
+            table3.drop(bind=self.engine)
 
         with pytest.raises(Exception) as e_info:
-            table3.create()
+            table3.create(bind=self.engine)
 
         assert "min value of identity key constraints are not supported by SQream" in str(e_info.value)
 
@@ -47,10 +47,10 @@ class TestOrmDao(TestBaseOrm):
             Column("id", sa.Integer, Identity(start=1, maxvalue=10)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
         if self.insp.has_table(table3.name):
-            table3.drop()
+            table3.drop(bind=self.engine)
 
         with pytest.raises(Exception) as e_info:
-            table3.create()
+            table3.create(bind=self.engine)
 
         assert "max value of identity key constraints are not supported by SQream" in str(e_info.value)
 
@@ -60,10 +60,10 @@ class TestOrmDao(TestBaseOrm):
             Column("id", sa.Integer, Identity(start=1, nomaxvalue=10)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
         if self.insp.has_table(table3.name):
-            table3.drop()
+            table3.drop(bind=self.engine)
 
         with pytest.raises(Exception) as e_info:
-            table3.create()
+            table3.create(bind=self.engine)
 
         assert "no maxvalue of identity key constraints are not supported by SQream" in str(e_info.value)
 
@@ -73,10 +73,10 @@ class TestOrmDao(TestBaseOrm):
             Column("id", sa.Integer, Identity(start=1, nominvalue=10)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
         if self.insp.has_table(table3.name):
-            table3.drop()
+            table3.drop(bind=self.engine)
 
         with pytest.raises(Exception) as e_info:
-            table3.create()
+            table3.create(bind=self.engine)
 
         assert "no minvalue of identity key constraints are not supported by SQream" in str(e_info.value)
 
@@ -86,10 +86,10 @@ class TestOrmDao(TestBaseOrm):
             Column("id", sa.Integer, Identity(start=1, cache=5)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
         if self.insp.has_table(table3.name):
-            table3.drop()
+            table3.drop(bind=self.engine)
 
         with pytest.raises(Exception) as e_info:
-            table3.create()
+            table3.create(bind=self.engine)
 
         assert "cache of identity key constraints are not supported by SQream" in str(e_info.value)
 
@@ -99,10 +99,10 @@ class TestOrmDao(TestBaseOrm):
             Column("id", sa.Integer, Identity(start=1, order=True)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
         if self.insp.has_table(table3.name):
-            table3.drop()
+            table3.drop(bind=self.engine)
 
         with pytest.raises(Exception) as e_info:
-            table3.create()
+            table3.create(bind=self.engine)
 
         assert "order of identity key constraints are not supported by SQream" in str(e_info.value)
 
@@ -112,10 +112,10 @@ class TestOrmDao(TestBaseOrm):
             Column("id", sa.Integer, Identity(start=1, cycle=6)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
         if self.insp.has_table(table3.name):
-            table3.drop()
+            table3.drop(bind=self.engine)
 
         with pytest.raises(Exception) as e_info:
-            table3.create()
+            table3.create(bind=self.engine)
 
         assert "cycle of identity key constraints are not supported by SQream" in str(e_info.value)
 
@@ -125,10 +125,10 @@ class TestOrmDao(TestBaseOrm):
             Column("id", sa.Integer, ForeignKey("table1.id")), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
         if self.insp.has_table(table3.name):
-            table3.drop()
+            table3.drop(bind=self.engine)
 
         with pytest.raises(Exception) as e_info:
-            table3.create()
+            table3.create(bind=self.engine)
 
         assert "foreign key constraints are not supported by SQream" in str(e_info.value)
 
@@ -138,10 +138,10 @@ class TestOrmDao(TestBaseOrm):
             Column("id", sa.Integer, primary_key=True), Column("name", sa.UnicodeText), Column("value", sa.Integer)
         )
         if self.insp.has_table(table3.name):
-            table3.drop()
+            table3.drop(bind=self.engine)
 
         with pytest.raises(Exception) as e_info:
-            table3.create()
+            table3.create(bind=self.engine)
 
         assert "primary key constraints are not supported by SQream" in str(e_info.value)
 
@@ -163,7 +163,7 @@ class TestOrmDao(TestBaseOrm):
             session.flush()
             session.commit() # not doing nothing
 
-        res = self.engine.execute(select(self.user)).fetchall()
+        res = self.session.execute(select(self.user)).fetchall()
         assert len(res) == 3, "Row count after insert is not correct"
 
     # Delete Where not supported

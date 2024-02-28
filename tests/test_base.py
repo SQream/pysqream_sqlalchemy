@@ -1,7 +1,5 @@
 import pytest
 import socket
-import sys
-import os
 from pytest_logger import Logger
 from sqlalchemy import orm, create_engine, MetaData
 import sqlalchemy as sa
@@ -164,7 +162,7 @@ class TestBaseTI(TestBase):
         )
 
         if self.insp.has_table(self.testware_affinity_matrix.name):
-            self.testware_affinity_matrix.drop()
+            self.testware_affinity_matrix.drop(bind=self.engine)
 
         self.metadata.create_all(bind=self.engine)
 

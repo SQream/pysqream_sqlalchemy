@@ -30,14 +30,15 @@ class TestOrmDto(TestBaseOrm):
     def test_select_one_col(self):
 
         expected_stmt = f"SELECT table1.id \nFROM {self.table1.name}"
-        stmt = select([self.table1.c.id])
+        stmt = select(self.table1.c.id)
         assert expected_stmt == str(stmt)
 
     # Select Where not supported
     def test_select_where_not_supported(self):
 
         with pytest.raises(Exception) as e_info:
-            print(self.table1.select().where(self.table1.c.id == '1'))
+            stmt = self.table1.select().where(self.table1.c.id == '1')
+            self.session.execute(stmt)
 
         assert "Where clause of parameterized query not supported on SQream" in str(e_info.value)
 
@@ -83,7 +84,7 @@ class TestOrmDto(TestBaseOrm):
         expected_stmt = f"SELECT {self.table1.c.id}, {self.table1.c.name}, {self.table1.c.value} \nFROM {self.table1.name} " \
                         f"JOIN {self.table2.name} ON {self.table1.c.id} = {self.table2.c.id}"
         join_stmt = self.table1.join(self.table2, self.table1.c.id == self.table2.c.id)
-        stmt = select([self.table1]).select_from(join_stmt)
+        stmt = select(self.table1).select_from(join_stmt)
         assert expected_stmt == str(stmt)
 
     # Select Join Where not supported
@@ -91,15 +92,16 @@ class TestOrmDto(TestBaseOrm):
 
         join_stmt = self.table1.join(self.table2, self.table1.c.id == self.table2.c.id)
         with pytest.raises(Exception) as e_info:
-            print(select([self.table1]).select_from(join_stmt).where(self.table1.c.id == '1'))
-        assert "Where clause of parameterized query not supported on SQream" in str(e_info.value)
+            stmt = select(self.table1).select_from(join_stmt).where(self.table1.c.id == '1')
+            self.session.execute(stmt)
+        assert "Where clause of parameterized query not supported on SQream" in str(e_info.value), e_info.value
 
     def test_select_join_order_by(self):
 
         expected_stmt = f"SELECT {self.table1.c.id}, {self.table1.c.name}, {self.table1.c.value} \nFROM {self.table1.name} " \
                         f"JOIN {self.table2.name} ON {self.table1.c.id} = {self.table2.c.id} ORDER BY {self.table1.c.id}"
         join_stmt = self.table1.join(self.table2, self.table1.c.id == self.table2.c.id)
-        stmt = select([self.table1]).select_from(join_stmt).order_by(self.table1.c.id)
+        stmt = select(self.table1).select_from(join_stmt).order_by(self.table1.c.id)
         assert expected_stmt == str(stmt)
 
     def test_select_multiple_join(self):
@@ -132,7 +134,7 @@ class TestOrmDto(TestBaseOrm):
         table_aliased = aliased(self.table1, name="table_aliased")
         expected_stmt = f"SELECT {table_aliased.c.id}, {table_aliased.c.name}, {table_aliased.c.value} \n" \
                         f"FROM {self.table1.name} AS {table_aliased.name}"
-        stmt = select([table_aliased])
+        stmt = select(table_aliased)
         assert expected_stmt == str(stmt)
 
     def test_select_subquery(self):
