@@ -3,7 +3,7 @@ from sqlalchemy.sql import compiler, crud, selectable, elements, sqltypes
 from sqlalchemy import exc, util
 from sqlalchemy.dialects.mysql import TINYINT
 from sqlalchemy.sql.compiler import FUNCTIONS, OPERATORS
-
+from typing import NamedTuple
 
 NOT_SUPPORTED_OPERATORS = ['NULLS FIRST', 'NULLS LAST']
 NOT_SUPPORTED_FUNCTIONS = ['aggregate_strings', 'cube', 'current_time', 'current_user', 'grouping_sets', 'localtime',
@@ -37,7 +37,6 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
        (?,?) clauses for ORM inserts with parameters  '''
 
     def visit_insert(self, insert_stmt, **kw):
-
         compile_state = insert_stmt._compile_state_factory(
             insert_stmt, self, **kw
         )
@@ -83,6 +82,7 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
                 "in-place multirow inserts."
             )
         crud_params_single = crud_params.single_params
+        crud_params_multi = crud_params.all_multi_params
         supports_default_values = self.dialect.supports_default_values
 
         text = "INSERT "
@@ -131,6 +131,7 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
                     self._render_cte_clause(
                         nesting_level=nesting_level,
                         include_following_stack=True,
+                        visiting_cte=kw.get("visiting_cte")
                     ),
                     select_text,
                 )
@@ -143,18 +144,19 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
         # does not support
         # <Overriding part> - money is in crud_params[0]
         elif compile_state._has_multi_parameters:
-            insert_single_values_expr = ", ".join([c[2] for c in crud_params.single_params])
-            text += " VALUES (%s)" % insert_single_values_expr
+            text += " VALUES "
+            for cpm in crud_params_multi:
+                insert_single_values_expr = ", ".join([args[2] for args in cpm])
+                text += f"({insert_single_values_expr}), "
+            text = text.rstrip()[:-1]
             if toplevel:
-                setattr(SqreamSQLCompiler, insert_single_values_expr, insert_single_values_expr)
-        # </Overriding part>
+                pass
         else:
-            insert_single_values_expr = ", ".join(
-                [value for c, expr, value, params in crud_params.single_params]
-            )
-            text += " VALUES (%s)" % insert_single_values_expr
+            insert_single_values_expr = ", ".join([args[2] for args in crud_params_single])
+            text += f" VALUES ({insert_single_values_expr})"
             if toplevel:
-                setattr(SqreamSQLCompiler, insert_single_values_expr, insert_single_values_expr)
+                pass
+        # </Overriding part>
 
         if insert_stmt._post_values_clause is not None:
             post_values_clause = self.process(
@@ -172,6 +174,7 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
                 self._render_cte_clause(
                     nesting_level=nesting_level,
                     include_following_stack=True,
+                    visiting_cte=kw.get("visiting_cte")
                 )
                 + text
             )
@@ -530,6 +533,7 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             text = (
                 self._render_cte_clause(
                     nesting_level=nesting_level,
+                    visiting_cte=kw.get("visiting_cte")
                 )
                 + text
             )
@@ -649,6 +653,7 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             text = (
                 self._render_cte_clause(
                     nesting_level=nesting_level,
+                    visiting_cte=kw.get("visiting_cte")
                 )
                 + text
             )

@@ -25,6 +25,8 @@ for row in res:
     print row
 
 '''
+import re
+
 import pysqream.utils
 # from __future__ import annotations
 # from importlib import import_module, resources    # for importing and returning the module
@@ -180,9 +182,14 @@ class SqreamDialect(DefaultDialect):
 
         return columns_meta
 
+    def do_executemany(self, cursor, statement, parameters, context=None):
+        print("------------", statement)
+        statement = re.match(r"^.+VALUES.+?\)", statement).group()
+        cursor.executemany(statement, parameters, data_as='alchemy_flat_list')
+
     def do_execute(self, cursor, statement, parameters, context=None):
         if statement.lower().startswith('insert') and '?' in statement: # and type(parameters[0] not in (tuple, list)):
-            cursor.executemany(statement, parameters, data_as='alchemy_flat_list')
+            self.do_executemany(cursor, statement, parameters, context)
         else:
             cursor.execute(statement, parameters)
 

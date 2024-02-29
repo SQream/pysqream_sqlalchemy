@@ -94,7 +94,7 @@ class TestSqlalchemy(TestBase):
 
         # Insert into table
         values = [(True, 77, 777, 7777, 77777, 7.0, 7.77777777, date(2012, 11, 23), datetime(2012, 11, 23, 16, 34, 56),
-                   'bla', 'בלה', Decimal('1.1')),] * 2
+                   'bla', 'текст', Decimal('7.7')),] * 2
 
         stmt = orm_table.insert().values(values)
         self.session.execute(stmt)
