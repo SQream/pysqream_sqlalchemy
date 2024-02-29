@@ -1,21 +1,22 @@
-''' Testing the SQream SQLAlchemy dialect. See also tests for the SQream
-    DB-API connector 
 '''
-import logging
+    Testing the SQream SQLAlchemy dialect. See also tests for the SQream
+    DB-API connector
+'''
+
 import os
 import sys
+
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/pysqream_sqlalchemy/')
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/tests/')
 import pytest
 import pandas as pd
 import sqlalchemy as sa
-from sqlalchemy import create_engine, MetaData, select, Table, Column, insert, text, DDL, orm
+from sqlalchemy import create_engine, select, Table, Column, insert, text, DDL, orm
 from test_base import TestBase, Logger, TestBaseTI
 from alembic.runtime.migration import MigrationContext
 from alembic.operations import Operations
-from datetime import datetime, date, timezone as tz
+from datetime import datetime, date
 from decimal import Decimal
-
 
 # Registering dialect
 sa.dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
@@ -64,7 +65,8 @@ class TestSqlalchemy(TestBase):
         assert (inspected_cols[0]['name'] == 'iNts fosho')
 
         self.metadata.reflect(bind=self.engine)
-        assert (repr(self.metadata.tables["kOko"]) == "Table('kOko', MetaData(), Column('iNts fosho', Integer(), table=<kOko>, nullable=False), schema=None)")
+        assert (repr(self.metadata.tables[
+                         "kOko"]) == "Table('kOko', MetaData(), Column('iNts fosho', Integer(), table=<kOko>, nullable=False), schema=None)")
 
         Logger().info('SQLAlchemy ORM tests')
         # ORM queries - test that correct SQream queries (SQL text strings) are
@@ -94,7 +96,7 @@ class TestSqlalchemy(TestBase):
 
         # Insert into table
         values = [(True, 77, 777, 7777, 77777, 7.0, 7.77777777, date(2012, 11, 23), datetime(2012, 11, 23, 16, 34, 56),
-                   'bla', 'текст', Decimal('7.7')),] * 2
+                   'test', 'test_text', Decimal('7.7')), ] * 2
 
         stmt = orm_table.insert().values(values)
         self.session.execute(stmt)
@@ -108,13 +110,10 @@ class TestSqlalchemy(TestBase):
         joined = orm_table.join(t2, orm_table.columns.iNts == t2.columns.iNts, isouter=False)
         stmt = joined.select()
         res = self.session.execute(stmt).fetchall()
-        assert (len(res) == len(values) * 2)
+        assert len(res) == len(values) * 2
 
 
-## Pandas tests
-#  ------------
-
-
+# Pandas tests
 class TestPandas(TestBase):
     def test_pandas(self):
         # Creating a SQream table from a Pandas DataFrame
@@ -128,9 +127,9 @@ class TestPandas(TestBase):
             'floats': [10.0, 11.0],
             'doubles': [10.1111111, 11.1111111],
             'dates': [date(2012, 11, 23), date(2012, 11, 23)],
-            'datetimes':  [datetime(2012, 11, 23, 16, 34, 56), datetime(2012, 11, 23, 16, 34, 56)],
-            'varchars':  ['koko', 'koko2'],
-            'nvarchars':  ['shoko', 'shoko2'],
+            'datetimes': [datetime(2012, 11, 23, 16, 34, 56), datetime(2012, 11, 23, 16, 34, 56)],
+            'varchars': ['koko', 'koko2'],
+            'nvarchars': ['shoko', 'shoko2'],
             'numerics': [Decimal("1.1"), Decimal("-1.1")]
         })
 
@@ -160,8 +159,6 @@ class TestPandas(TestBase):
 
 
 # Alembic tests
-#  -------------
-
 class TestAlembic(TestBase):
     def test_alembic(self):
         Logger().info('Alembic tests')
@@ -175,48 +172,48 @@ class TestAlembic(TestBase):
             pass
 
         t = op.create_table('waste',
-            Column('bools', sa.Boolean),
-            Column('ubytes', sa.Tinyint),
-            Column('shorts', sa.SmallInteger),
-            Column('ints', sa.Integer),
-            Column('bigints', sa.BigInteger),
-            Column('floats', sa.REAL),
-            Column('doubles', sa.Float),
-            Column('dates', sa.Date),
-            Column('datetimes', sa.DateTime),
-            Column('varchars', sa.String(10)),
-            Column('nvarchars', sa.UnicodeText),
-            Column('numerics', sa.Numeric(38, 10)),
-        )
+                            Column('bools', sa.Boolean),
+                            Column('ubytes', sa.Tinyint),
+                            Column('shorts', sa.SmallInteger),
+                            Column('ints', sa.Integer),
+                            Column('bigints', sa.BigInteger),
+                            Column('floats', sa.REAL),
+                            Column('doubles', sa.Float),
+                            Column('dates', sa.Date),
+                            Column('datetimes', sa.DateTime),
+                            Column('varchars', sa.String(10)),
+                            Column('nvarchars', sa.UnicodeText),
+                            Column('numerics', sa.Numeric(38, 10)),
+                            )
 
         data = [
             {
-            'bools': True,
-            'ubytes':5,
-            'shorts': 55,
-            'ints': 555,
-            'bigints': 5555,
-            'floats': 5.0,
-            'doubles': 5.5555555,
-            'dates': date(2012, 11, 23),
-            'datetimes': datetime(2012, 11, 23, 16, 34, 56),
-            'varchars': 'bla',
-            'nvarchars': 'bla2',
-            'numerics': Decimal("1.1")
+                'bools': True,
+                'ubytes': 5,
+                'shorts': 55,
+                'ints': 555,
+                'bigints': 5555,
+                'floats': 5.0,
+                'doubles': 5.5555555,
+                'dates': date(2012, 11, 23),
+                'datetimes': datetime(2012, 11, 23, 16, 34, 56),
+                'varchars': 'bla',
+                'nvarchars': 'bla2',
+                'numerics': Decimal("1.1")
             },
             {'bools': False,
-            'ubytes':6,
-            'shorts': 66,
-            'ints': 666,
-            'bigints': 6666,
-            'floats': 6.0,
-            'doubles': 6.6666666,
-            'dates': date(2012, 11, 24),
-            'datetimes': datetime(2012, 11, 24, 16, 34, 57),
-            'varchars': 'bla',
-            'nvarchars': 'bla2',
-            'numerics': Decimal("-1.1")
-            }
+             'ubytes': 6,
+             'shorts': 66,
+             'ints': 666,
+             'bigints': 6666,
+             'floats': 6.0,
+             'doubles': 6.6666666,
+             'dates': date(2012, 11, 24),
+             'datetimes': datetime(2012, 11, 24, 16, 34, 57),
+             'varchars': 'bla',
+             'nvarchars': 'bla2',
+             'numerics': Decimal("-1.1")
+             }
         ]
 
         op.bulk_insert(t, data)

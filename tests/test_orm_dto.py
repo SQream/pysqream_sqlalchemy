@@ -1,15 +1,14 @@
-
-
-import os, sys
+import os
+import sys
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/pysqream_sqlalchemy/')
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/tests/')
+import pytest
+import sqlalchemy as sa
 from test_base import TestBaseOrm
 from sqlalchemy import select, dialects, Table, Column, union_all, func, distinct, case, cast, Numeric, \
     extract, nulls_first, desc, nulls_last, asc, true, false
 from sqlalchemy.sql import exists
 from sqlalchemy.orm import aliased, Session
-import sqlalchemy as sa
-import pytest
 from datetime import datetime
 
 

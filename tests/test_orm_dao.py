@@ -1,11 +1,12 @@
-import os, sys
+import os
+import sys
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/pysqream_sqlalchemy/')
 sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/tests/')
-from test_base import TestBaseOrm
-from sqlalchemy import select, dialects, Table, Column, union_all, Identity, ForeignKey, Sequence, schema, update, delete
-from sqlalchemy.orm import aliased, Session
-import sqlalchemy as sa
 import pytest
+import sqlalchemy as sa
+from test_base import TestBaseOrm
+from sqlalchemy import select, dialects, Table, Column, Identity, ForeignKey, update, delete
+from sqlalchemy.orm import Session
 
 
 dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")

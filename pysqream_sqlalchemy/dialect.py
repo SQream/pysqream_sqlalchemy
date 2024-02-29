@@ -1,41 +1,10 @@
-'''
-SQLAlchemy refers to SQL variants as dialects. An SQLAlchemy Dialect object
-contains information about specific behaviors of the backend, keywords etc.
-It also references to the default underlying DB-API implementation (aka Driver) in use.
-
-Usage:
-- Pop a Python shell from sqream_dialect.py's folder, or add it to Python's import path
-
-# Usage snippet - type in in shell or editor
-# ------------------------------------------
-
-import sqlalchemy
-from sqlalchemy import create_engine
-from sqlalchemy.dialects import registry
-
-# In-process registering, installing the package not required
-registry.register("sqream.sqream_dialect", "sqream_dialect", "SqreamDialect")
-
-engine = create_engine("sqream+sqream_dialect://sqream:sqream@localhost:5000/master")
-
-# Check 1, 2
-res = engine.execute('select 1')
-
-for row in res:
-    print row
-
-'''
 import re
-
-import pysqream.utils
-# from __future__ import annotations
-# from importlib import import_module, resources    # for importing and returning the module
-from sqlalchemy.engine.default import DefaultDialect, DefaultExecutionContext
-from sqlalchemy.types import Boolean, LargeBinary, SmallInteger, Integer, BigInteger, Float, Date, DateTime, String, Unicode, UnicodeText, Numeric
+from sqlalchemy.engine.default import DefaultDialect
+from sqlalchemy.types import Boolean, SmallInteger, Integer, BigInteger, Float, Date, DateTime, String, Unicode, Numeric
 from base import SqreamSQLCompiler, SqreamTypeCompiler, TINYINT, SqreamDDLCompiler
 from sqlalchemy.dialects import registry
 from sqlalchemy import text
-from sqlalchemy.sql import compiler, crud
+
 
 try:
     from alembic.ddl.impl import DefaultImpl
@@ -49,7 +18,6 @@ else:
 
 
 registry.register("pysqream", "dialect", "SqreamDialect")
-
 
 
 sqream_to_alchemy_types = {
@@ -81,9 +49,11 @@ def printdbg(message, dbg=False):
 
 
 class SqreamDialect(DefaultDialect):
-    ''' dbapi() classmethod, get_table_names() and get_columns() seem to be the
+    '''
+        import_dbapi() classmethod, get_table_names() and get_columns() seem to be the
         important ones for Apache Superset. get_pk_constraint() returning an empty
-        sequence also needs to be in place  '''
+        sequence also needs to be in place
+    '''
 
     name = 'sqream'
     driver = 'sqream'
@@ -106,15 +76,12 @@ class SqreamDialect(DefaultDialect):
     @classmethod
     def import_dbapi(cls):
         ''' The minimal reqruirement to get an engine.connect() going'''
-        # return dbapi
-
-        # return __import__("sqream_dbapi", fromlist="sqream")
-
         try:
             from pysqream import pysqream as pysqream
         except ImportError:
             import pysqream
-        setattr(pysqream, "Error", Exception)
+
+        setattr(pysqream, "Error", ConnectionError)
         return pysqream
 
     def initialize(self, connection):
@@ -135,10 +102,10 @@ class SqreamDialect(DefaultDialect):
         query = text("select get_schemas()")
         return [schema for schema, database in connection.execute(query).fetchall()]
 
-    def has_schema(self, connection, schema):
+    def has_schema(self, connection, schema_name, **kw):
         query = text("select get_schemas()")
         schemas = [schema for schema, database in connection.execute(query).fetchall()]
-        return schema in schemas
+        return schema_name in schemas
 
     def get_view_names(self, connection, schema='public', **kw):
         
@@ -149,8 +116,10 @@ class SqreamDialect(DefaultDialect):
         return table_name in self.get_table_names(connection, schema, info_cache=None)
 
     def get_columns(self, connection, table_name, schema=None, **kwargs):
-        ''' Used by SQLAlchemy's Table() which is called by Superset's get_table()
-            when trying to add a new table to the sources'''
+        '''
+            Used by SQLAlchemy's Table() which is called by Superset's get_table()
+            when trying to add a new table to the sources
+        '''
 
         query = text(f'select get_ddl(\'"{table_name}"\')')
         res = connection.execute(query).fetchall()
