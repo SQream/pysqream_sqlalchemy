@@ -81,6 +81,7 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
                 "version settings does not support "
                 "in-place multirow inserts."
             )
+        print("####", crud_params.use_insertmanyvalues)
         crud_params_single = crud_params.single_params
         crud_params_multi = crud_params.all_multi_params
         supports_default_values = self.dialect.supports_default_values
@@ -151,11 +152,13 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             text = text.rstrip()[:-1]
             if toplevel:
                 pass
+                # setattr(compiler.SQLCompiler, "insert_single_values_expr", insert_single_values_expr)
         else:
             insert_single_values_expr = ", ".join([args[2] for args in crud_params_single])
             text += f" VALUES ({insert_single_values_expr})"
             if toplevel:
                 pass
+                # setattr(compiler.SQLCompiler, "insert_single_values_expr", insert_single_values_expr)
         # </Overriding part>
 
         if insert_stmt._post_values_clause is not None:
