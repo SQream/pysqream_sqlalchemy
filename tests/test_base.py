@@ -3,8 +3,8 @@ import socket
 from pytest_logger import Logger
 from sqlalchemy import orm, create_engine, MetaData
 import sqlalchemy as sa
-from sqlalchemy import Table, Column, String, Integer, ForeignKey, Sequence, Identity
-from sqlalchemy.orm import declarative_base, relationship, IdentityMap
+from sqlalchemy import Table, Column, Integer, Identity
+from sqlalchemy.orm import declarative_base
 
 
 def connect(ip, port, clustered=False, use_ssl=False):
@@ -164,7 +164,7 @@ class TestBaseTI(TestBase):
         if self.insp.has_table(self.testware_affinity_matrix.name):
             self.testware_affinity_matrix.drop(bind=self.engine)
 
-        self.metadata.create_all(bind=self.engine)
+        self.testware_affinity_matrix.create(bind=self.engine)
 
         yield
         self.stop()

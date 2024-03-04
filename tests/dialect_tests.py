@@ -64,9 +64,8 @@ class TestSqlalchemy(TestBase):
         inspected_cols = self.insp.get_columns('kOko')
         assert (inspected_cols[0]['name'] == 'iNts fosho')
 
-        self.metadata.reflect(bind=self.engine)
-        assert (repr(self.metadata.tables[
-                         "kOko"]) == "Table('kOko', MetaData(), Column('iNts fosho', Integer(), table=<kOko>, nullable=False), schema=None)")
+        self.metadata.reflect(bind=self.engine, only={'kOko'})
+        assert (repr(self.metadata.tables["kOko"]) == "Table('kOko', MetaData(), Column('iNts fosho', Integer(), table=<kOko>, nullable=False), schema=None)")
 
         Logger().info('SQLAlchemy ORM tests')
         # ORM queries - test that correct SQream queries (SQL text strings) are
@@ -151,11 +150,11 @@ class TestPandas(TestBase):
         # Drop, create and insert
         df.to_sql('kOko3', self.engine, if_exists='replace', index=False, dtype=dtype)
 
-        res = pd.read_sql('select * from "kOko3"', self.conn_str)
-        res2 = pd.read_sql_table('kOko3', con=self.engine)
+        res = pd.read_sql('select * from "kOko3"', self.engine)
+        res2 = pd.read_sql_table('kOko3', self.engine)
 
-        assert ((res == df).eq(True).all()[0])
-        assert ((res2 == df).eq(True).all()[0])
+        assert ((res == df).eq(True).all().iloc[0])
+        assert ((res2 == df).eq(True).all().iloc[0])
 
 
 # Alembic tests
@@ -219,7 +218,7 @@ class TestAlembic(TestBase):
         op.bulk_insert(t, data)
 
         res = self.session.execute(text('select * from waste')).fetchall()
-        assert (res == [tuple(dikt.values()) for dikt in data])
+        assert (res == [tuple(d.values()) for d in data])
 
 
 class TestTI(TestBaseTI):
@@ -232,19 +231,15 @@ class TestTI(TestBaseTI):
     def insert_data(self, path):
         return pd.read_csv(path).to_dict('records')
 
-    def test_ti_1(self, path, insert_data):
-        ins = insert(self.testware_affinity_matrix).values(insert_data)
-        self.session.execute(ins)
-        res = self.session.execute(self.testware_affinity_matrix.select()).fetchall()
-        res_df = pd.DataFrame(res, columns=['technology', 'criteria', 'category', 'component',
-                                            'svn', 'parm_name', 'lpt', 'tech', 'severity'])
-        expected_df = pd.read_csv(path)
-        is_equal, msg_results = find_diff(expected_df, res_df)
-        assert is_equal, msg_results
+    @pytest.mark.parametrize("case", (1, 2))
+    def test_ti(self, path, insert_data, case):
+        if case == 1:
+            ins = insert(self.testware_affinity_matrix).values(insert_data)
+            self.session.execute(ins)
+        elif case == 2:
+            ins = self.testware_affinity_matrix.insert()
+            self.session.execute(ins, insert_data)
 
-    def test_ti_2(self, path, insert_data):
-        ins = self.testware_affinity_matrix.insert()
-        self.session.execute(ins, insert_data)
         res = self.session.execute(self.testware_affinity_matrix.select()).fetchall()
         res_df = pd.DataFrame(res, columns=['technology', 'criteria', 'category', 'component',
                                             'svn', 'parm_name', 'lpt', 'tech', 'severity'])

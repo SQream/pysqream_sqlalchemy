@@ -24,12 +24,14 @@ Verifying Installation
 
     import sqlalchemy as sa
     import pandas as pd
+    from sqlalchemy import text
                   
     conn_str = "sqream://sqream:sqream@localhost:3108/master"                                                  
-    engine = sa.create_engine(conn_str, connect_args={"clustered": True}) 
+    engine = sa.create_engine(conn_str, connect_args={"clustered": True})
+    session = orm.sessionmaker(bind=engine)()
 
-    engine.execute('create or replace table test (ints int)')
-    engine.execute('insert into test values (5), (6)')
+    session.execute(text('create or replace table test (ints int)'))
+    session.execute(text('insert into test values (5), (6)'))
     df = pd.read_sql('select * from test', engine)
     print(df)
 

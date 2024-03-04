@@ -698,5 +698,3 @@ class TestOrmDto(TestBaseOrm):
                 session.execute(stmt)
 
         assert "rollup function not supported on SQream" in str(e_info.value)
-
-
