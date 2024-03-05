@@ -12,29 +12,26 @@ NOT_SUPPORTED_PARAMETERIZED_FUNCTIONS = ['char_length', 'coalesce', 'concat', 'p
 
 
 class TINYINT(TINYINT):
-    ''' Allows describing tables via the ORM mechanism. Complemented in
-        SqreamTypeCompiler '''
+    """
+        Allows describing tables via the ORM mechanism.
+        Complemented in SqreamTypeCompiler
+    """
 
     pass
 
 
 class SqreamTypeCompiler(compiler.GenericTypeCompiler):
-    ''' Get the SQream string names for SQLAlchemy types, useful for ORM
-        generated Create queries '''
+    """ Get the SQream string names for SQLAlchemy types, useful for ORM
+        generated Create queries """
 
     def visit_BOOLEAN(self, type_, **kw):
-
         return "BOOL"
 
     def visit_TINYINT(self, type_, **kw):
-
         return "TINYINT"
 
 
 class SqreamSQLCompiler(compiler.SQLCompiler):
-    ''' Overriding visit_insert behavior of generating SQL with multiple
-       (?,?) clauses for ORM inserts with parameters  '''
-
     def visit_select(
         self,
         select_stmt,

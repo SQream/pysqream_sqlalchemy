@@ -1,4 +1,3 @@
-import logging
 import re
 from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.types import Boolean, SmallInteger, Integer, BigInteger, Float, Date, DateTime, String, Unicode, Numeric, ARRAY
@@ -13,7 +12,7 @@ except ImportError:
     pass
 else:
     class SQreamImpl(DefaultImpl):
-        ''' Allows Alembic tool to recognize the dialect if installed '''
+        """ Allows Alembic tool to recognize the dialect if installed """
 
         __dialect__ = 'sqream'
 
@@ -40,24 +39,24 @@ sqream_to_alchemy_types = {
     'nvarchar':  Unicode,
     'text':      Unicode,
     'numeric':   Numeric,
-    'bool[]':      ARRAY,
-    'boolean[]':   ARRAY,
-    'ubyte[]':     ARRAY,
-    'tinyint[]':   ARRAY,
-    'smallint[]':  ARRAY,
-    'int[]':       ARRAY,
-    'integer[]':   ARRAY,
-    'bigint[]':    ARRAY,
-    'float[]':     ARRAY,
-    'double[]':    ARRAY,
-    'real[]':      ARRAY,
-    'date[]':      ARRAY,
-    'datetime[]':  ARRAY,
-    'timestamp[]': ARRAY,
-    'varchar[]':   ARRAY,
-    'nvarchar[]':  ARRAY,
-    'text[]':      ARRAY,
-    'numeric[]':   ARRAY,
+    # 'bool[]':      ARRAY,
+    # 'boolean[]':   ARRAY,
+    # 'ubyte[]':     ARRAY,
+    # 'tinyint[]':   ARRAY,
+    # 'smallint[]':  ARRAY,
+    # 'int[]':       ARRAY,
+    # 'integer[]':   ARRAY,
+    # 'bigint[]':    ARRAY,
+    # 'float[]':     ARRAY,
+    # 'double[]':    ARRAY,
+    # 'real[]':      ARRAY,
+    # 'date[]':      ARRAY,
+    # 'datetime[]':  ARRAY,
+    # 'timestamp[]': ARRAY,
+    # 'varchar[]':   ARRAY,
+    # 'nvarchar[]':  ARRAY,
+    # 'text[]':      ARRAY,
+    # 'numeric[]':   ARRAY,
 }
 
 
@@ -68,11 +67,11 @@ def printdbg(message, dbg=False):
 
 
 class SqreamDialect(DefaultDialect):
-    '''
+    """
         import_dbapi() classmethod, get_table_names() and get_columns() seem to be the
         important ones for Apache Superset. get_pk_constraint() returning an empty
         sequence also needs to be in place
-    '''
+    """
 
     name = 'sqream'
     driver = 'sqream'
@@ -94,7 +93,7 @@ class SqreamDialect(DefaultDialect):
 
     @classmethod
     def import_dbapi(cls):
-        ''' The minimal reqruirement to get an engine.connect() going'''
+        """ The minimal reqruirement to get an engine.connect() going"""
         try:
             from pysqream import pysqream as pysqream
         except ImportError:
@@ -107,7 +106,7 @@ class SqreamDialect(DefaultDialect):
         self.default_schema_name = 'public'
 
     def get_table_names(self, connection, schema=None, **kw):
-        ''' Allows showing table names when connecting database to Apache Superset'''
+        """ Allows showing table names when connecting database to Apache Superset """
         schema = connection.dialect.default_schema_name if schema is None else schema
         query = text("select * from sqream_catalog.tables")
         tables = connection.execute(query).fetchall()
@@ -117,7 +116,7 @@ class SqreamDialect(DefaultDialect):
         return res
 
     def get_schema_names(self, connection, schema=None, **kw):
-        ''' Return schema names '''
+        """ Return schema names """
         query = text("select get_schemas()")
         return [schema for schema, database in connection.execute(query).fetchall()]
 
@@ -135,10 +134,10 @@ class SqreamDialect(DefaultDialect):
         return table_name in self.get_table_names(connection, schema, info_cache=None)
 
     def get_columns(self, connection, table_name, schema=None, **kwargs):
-        '''
+        """
             Used by SQLAlchemy's Table() which is called by Superset's get_table()
             when trying to add a new table to the sources
-        '''
+        """
 
         query = text(f'select get_ddl(\'"{table_name}"\')')
         res = connection.execute(query).fetchall()
@@ -156,8 +155,7 @@ class SqreamDialect(DefaultDialect):
             try:
                 type_key = col_meta[2].split()[0].split('(')[0]
                 if "[]" in type_key:
-                    logging.warning(f"Arrays have not supported yet. Column {col_name} with type {type_key} has been skipped")
-                    continue
+                    raise TypeError(f"Arrays have not supported yet. Column {col_name} has type {type_key}.")
                 col_type = sqream_to_alchemy_types[type_key]
             except KeyError as e:
                 raise Exception(f'key {type_key} not found. Perhaps get_ddl() implementation change? ** col meta {col_meta}')
@@ -175,6 +173,9 @@ class SqreamDialect(DefaultDialect):
         return columns_meta
 
     def do_executemany(self, cursor, statement, parameters, context=None):
+        """
+            SQream doesn't support insert queries with multiple value patterns (?, ?), (?, ?)
+        """
         statement = re.match(r"^.+VALUES.+?\)", statement).group()
         if isinstance(parameters, list):
             cursor.executemany(statement, parameters)

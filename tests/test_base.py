@@ -148,17 +148,17 @@ class TestBaseTI(TestBase):
         self.start(ip, port)
 
         self.testware_affinity_matrix = sa.Table(
-            'testware_affinity_matrix'
-            , self.metadata
-            , sa.Column('technology', sa.TEXT(32))
-            , sa.Column('criteria', sa.TEXT(32))
-            , sa.Column('category', sa.TEXT(32))
-            , sa.Column('component', sa.TEXT(32))
-            , sa.Column('svn', sa.TEXT(32))
-            , sa.Column('parm_name', sa.TEXT(32))
-            , sa.Column('lpt', sa.TEXT(32))
-            , sa.Column('tech', sa.TEXT(32))
-            , sa.Column('severity', sa.Float)
+            'testware_affinity_matrix',
+            self.metadata,
+            sa.Column('technology', sa.TEXT(32)),
+            sa.Column('criteria', sa.TEXT(32)),
+            sa.Column('category', sa.TEXT(32)),
+            sa.Column('component', sa.TEXT(32)),
+            sa.Column('svn', sa.TEXT(32)),
+            sa.Column('parm_name', sa.TEXT(32)),
+            sa.Column('lpt', sa.TEXT(32)),
+            sa.Column('tech', sa.TEXT(32)),
+            sa.Column('severity', sa.Float)
         )
 
         if self.insp.has_table(self.testware_affinity_matrix.name):

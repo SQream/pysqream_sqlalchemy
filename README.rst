@@ -25,7 +25,8 @@ Verifying Installation
     import sqlalchemy as sa
     import pandas as pd
     from sqlalchemy import text
-                  
+
+
     conn_str = "sqream://sqream:sqream@localhost:3108/master"                                                  
     engine = sa.create_engine(conn_str, connect_args={"clustered": True})
     session = orm.sessionmaker(bind=engine)()
@@ -79,28 +80,32 @@ The following example shows how to pull a table in Pandas. This example uses the
 .. code-block:: python
 
    import sqlalchemy as sa
-   
    from sqlalchemy.engine.url import URL
-   
    import pandas as pd
 
 
-	engine_url = URL('sqream'
-		, username='sqream'
-		, password='12345'
-		, host='127.0.0.1'
-		, port=3108
-		, database='master')
+	engine_url = sa.engine.url.URL(
+                 'sqream',
+                 username='sqream',
+                 password='12345',
+                 host='127.0.0.1',
+                 port=3108,
+                 database='master')
 	engine = sa.create_engine(engine_url,connect_args={"clustered": True, "service": "admin"})
-	   
+
 	table_df = pd.read_sql("select * from nba", con=engine)
+
 
 Limitations
 =============
 
+Arrays
+-----------------------
+SQream SQLAlchemy doesn't suppport ``ARRAY`` type for columns.
+
+
 Parameterized Queries
 -----------------------
-
 SQream SQLAlchemy supports only the ``BULK INSERT`` statement.
 
 
