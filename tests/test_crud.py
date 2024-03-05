@@ -81,13 +81,14 @@ class TestCreate(TestBaseCRUD):
 
         self.session.execute(text(f"create database {self.database_name}"))
 
-        assert len(self.get_databases(self.session)) == 2
+        databases_amount_old = len(self.get_databases(self.session))
         assert self.database_name in self.get_databases(self.session)
 
         self.session.execute(text(f"drop database {self.database_name}"))
 
-        assert len(self.get_databases(self.session)) == 1
+        databases_amount_new = len(self.get_databases(self.session))
         assert self.database_name not in self.get_databases(self.session)
+        assert databases_amount_new == databases_amount_old - 1
 
     def test_create_schema(self):
         if self.insp.has_schema(self.schema_name):
@@ -284,10 +285,12 @@ class TestDelete(TestBaseCRUD):
         if self.database_name not in self.get_databases(self.session):
             self.session.execute(text(f"create database {self.database_name}"))
 
+        databases_amount_old = len(self.get_databases(self.session))
         self.session.execute(text(f"drop database {self.database_name}"))
 
-        assert len(self.get_databases(self.session)) == 1
+        databases_amount_new = len(self.get_databases(self.session))
         assert self.database_name not in self.get_databases(self.session)
+        assert databases_amount_new == databases_amount_old - 1
 
     def test_delete_schema(self):
         if not self.insp.has_schema(self.schema_name):
