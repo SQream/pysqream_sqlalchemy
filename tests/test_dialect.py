@@ -1,7 +1,7 @@
-'''
+"""
     Testing the SQream SQLAlchemy dialect. See also tests for the SQream
     DB-API connector
-'''
+"""
 
 import os
 import sys
