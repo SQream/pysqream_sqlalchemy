@@ -1,13 +1,13 @@
-'''
+"""
     Testing the SQream SQLAlchemy dialect. See also tests for the SQream
     DB-API connector
-'''
+"""
 
 import os
 import sys
 
-sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/pysqream_sqlalchemy/')
-sys.path.append(os.path.abspath(__file__).rsplit('tests/', 1)[0] + '/tests/')
+sys.path.insert(0, 'pysqream_sqlalchemy')
+sys.path.insert(0, 'tests')
 import pytest
 import pandas as pd
 import sqlalchemy as sa
