@@ -1,15 +1,31 @@
-import pytest
 import socket
-import sys
-import os
-from pytest_logger import Logger
-from sqlalchemy import orm, create_engine, MetaData
+from datetime import datetime, date
+from decimal import Decimal
+from random import choice, randint, choices
+from typing import Union
+
+import pytest
 import sqlalchemy as sa
-from sqlalchemy import Table, Column, String, Integer, ForeignKey, Sequence, Identity
-from sqlalchemy.orm import declarative_base, relationship, IdentityMap
+from sqlalchemy import (text,
+                        Table,
+                        Column,
+                        orm,
+                        Integer,
+                        Boolean,
+                        Date,
+                        DateTime,
+                        Numeric,
+                        Text,
+                        create_engine,
+                        MetaData,
+                        Identity,
+                        Connection)
+from sqlalchemy.orm import declarative_base, Session
+
+from pytest_logger import Logger
 
 
-def connect(ip, clustered=False, use_ssl=False, port=5000):
+def connect(ip, port, clustered=False, use_ssl=False):
     print_echo = False
     conn_str = f"pysqream+dialect://sqream:sqream@{ip}:{port}/master"
     engine = create_engine(conn_str, echo=print_echo, connect_args={"clustered": clustered, "use_ssl": use_ssl})
@@ -25,23 +41,28 @@ def setTinyint(engine):
 
 
 class TestBase:
-
     @pytest.fixture()
     def ip(self, pytestconfig):
         return pytestconfig.getoption("ip")
 
+    @pytest.fixture()
+    def port(self, pytestconfig):
+        return pytestconfig.getoption("port")
+
     @pytest.fixture(autouse=True)
-    def Test_setup_teardown(self, ip):
-        self.start(ip)
+    def Test_setup_teardown(self, ip, port):
+        self.start(ip, port)
         yield
         self.stop()
 
-    def start(self, ip):
+    def start(self, ip, port):
         ip = ip if ip else socket.gethostbyname(socket.gethostname())
         Logger().info("Before Scenario")
-        Logger().info(f"Connect to server {ip}")
+        Logger().info(f"Connect to server {ip}:{port}")
         self.ip = ip
-        self.engine, self.metadata, self.session, self.conn_str = connect(ip)
+        self.port = port
+        self.engine, self.metadata, self.session, self.conn_str = connect(ip, port)
+        self.insp = sa.inspect(self.engine)
         setTinyint(self.engine)
 
     def stop(self):
@@ -50,7 +71,6 @@ class TestBase:
 
 
 class TestBaseOrm(TestBase):
-
     @pytest.fixture()
     def ip(self, pytestconfig):
         return pytestconfig.getoption("ip")
@@ -80,7 +100,7 @@ class TestBaseOrm(TestBase):
         return self.table2
 
     @pytest.fixture(autouse=True)
-    def Test_setup_teardown(self, ip):
+    def Test_setup_teardown(self, ip, port):
         self.Base = declarative_base()
 
         class Dates(self.Base):
@@ -116,7 +136,7 @@ class TestBaseOrm(TestBase):
         self.address = Address
         self.dates = Dates
 
-        self.start(ip)
+        self.start(ip, port)
 
         self.table1 = Table(
             'table1', self.metadata,
@@ -133,7 +153,6 @@ class TestBaseOrm(TestBase):
 
 
 class TestBaseTI(TestBase):
-
     @pytest.fixture()
     def ip(self, pytestconfig):
         return pytestconfig.getoption("ip")
@@ -143,33 +162,103 @@ class TestBaseTI(TestBase):
         return self.testware_affinity_matrix
 
     @pytest.fixture(autouse=True)
-    def Test_setup_teardown(self, ip):
-        self.start(ip)
-
-        metadata = MetaData(schema="rfab_ie")
-        metadata.bind = self.engine
-
-        if not self.engine.dialect.has_schema(self.engine, metadata.schema):
-            self.engine.execute(sa.schema.CreateSchema(metadata.schema))
+    def Test_setup_teardown(self, ip, port):
+        self.start(ip, port)
 
         self.testware_affinity_matrix = sa.Table(
-            'testware_affinity_matrix'
-            , metadata
-            , sa.Column('technology', sa.TEXT(32))
-            , sa.Column('criteria', sa.TEXT(32))
-            , sa.Column('category', sa.TEXT(32))
-            , sa.Column('component', sa.TEXT(32))
-            , sa.Column('svn', sa.TEXT(32))
-            , sa.Column('parm_name', sa.TEXT(32))
-            , sa.Column('lpt', sa.TEXT(32))
-            , sa.Column('tech', sa.TEXT(32))
-            , sa.Column('severity', sa.Float)
+            'testware_affinity_matrix',
+            self.metadata,
+            sa.Column('technology', sa.TEXT(32)),
+            sa.Column('criteria', sa.TEXT(32)),
+            sa.Column('category', sa.TEXT(32)),
+            sa.Column('component', sa.TEXT(32)),
+            sa.Column('svn', sa.TEXT(32)),
+            sa.Column('parm_name', sa.TEXT(32)),
+            sa.Column('lpt', sa.TEXT(32)),
+            sa.Column('tech', sa.TEXT(32)),
+            sa.Column('severity', sa.Float)
         )
 
-        if self.engine.has_table(self.testware_affinity_matrix.name):
-            self.testware_affinity_matrix.drop()
+        if self.insp.has_table(self.testware_affinity_matrix.name):
+            self.testware_affinity_matrix.drop(bind=self.engine)
 
-        self.testware_affinity_matrix.create()
+        self.testware_affinity_matrix.create(bind=self.engine)
 
         yield
         self.stop()
+
+
+class TestBaseCRUD(TestBase):
+    database_name = schema_name = table_name = 'crud'
+    view_name = "view_for_crud"
+
+    @staticmethod
+    def get_databases(connection: orm.Session) -> list[str]:
+        query = text("select database_name from sqream_catalog.databases")
+        databases = connection.execute(query).fetchall()
+        if databases:
+            return [d[0] for d in databases]
+        return []
+
+    @pytest.fixture
+    def crud_table_row(self):
+        self.Base = declarative_base()
+
+        class Crud(self.Base):
+            __tablename__ = "crud_table"
+
+            i = Column(Integer, Identity(start=0), primary_key=True)
+            b = Column(Boolean)
+            d = Column(Date)
+            dt = Column(DateTime)
+            n = Column(Numeric(15, 6))
+            t = Column(Text)
+
+            def __repr__(self):
+                return f"Crud(id={self.i})"
+
+        return Crud
+
+    @pytest.fixture
+    def crud_table(self):
+        return Table(
+            self.table_name,
+            self.metadata,
+            Column('i', Integer),
+            Column('b', Boolean),
+            Column('d', Date),
+            Column('dt', DateTime),
+            Column('n', Numeric(15, 6)),
+            Column('t', Text),
+            # Column('iar', ARRAY(Integer)),
+            # Column('bar', ARRAY(Boolean)),
+            # Column('dar', ARRAY(Date)),
+            # Column('dtar',ARRAY(DateTime)),
+            # Column('nar', ARRAY(Numeric(15, 6))),
+            # Column('tar', ARRAY(Text)),
+            extend_existing=True
+        )
+
+    @staticmethod
+    def get_random_row_values_for_crud_table(row_number: int):
+        return (
+            row_number,
+            choice((True, False)),
+            date(year=randint(2000, 2024), month=randint(1, 12), day=randint(1, 28)),
+            datetime(year=randint(2000, 2024),
+                     month=randint(1, 12),
+                     day=randint(1, 28),
+                     hour=randint(1, 23),
+                     minute=randint(1, 59),
+                     second=randint(1, 59)),
+            Decimal(f"{randint(int(1e8), int(9e8))}.{randint(int(1e5), int(9e5))}"),
+            "".join(choices("ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=randint(5, 50)))
+        )
+
+    def recreate_all_via_metadata(self, executor: Union[Connection, Session] = None):
+        if not executor:
+            executor = self.session
+        if self.view_name in self.insp.get_view_names():
+            executor.execute(text(f"drop view {self.view_name}"))
+        self.metadata.drop_all(bind=self.engine)
+        self.metadata.create_all(bind=self.engine)

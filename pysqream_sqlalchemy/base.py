@@ -1,6 +1,5 @@
-
-from sqlalchemy.sql import compiler, crud, selectable, elements, sqltypes
-from sqlalchemy import exc, util
+from sqlalchemy.sql import compiler, crud, elements
+from sqlalchemy import exc
 from sqlalchemy.dialects.mysql import TINYINT
 from sqlalchemy.sql.compiler import FUNCTIONS, OPERATORS
 
@@ -13,180 +12,26 @@ NOT_SUPPORTED_PARAMETERIZED_FUNCTIONS = ['char_length', 'coalesce', 'concat', 'p
 
 
 class TINYINT(TINYINT):
-    ''' Allows describing tables via the ORM mechanism. Complemented in
-        SqreamTypeCompiler '''
+    """
+        Allows describing tables via the ORM mechanism.
+        Complemented in SqreamTypeCompiler
+    """
 
     pass
 
 
 class SqreamTypeCompiler(compiler.GenericTypeCompiler):
-    ''' Get the SQream string names for SQLAlchemy types, useful for ORM
-        generated Create queries '''
+    """ Get the SQream string names for SQLAlchemy types, useful for ORM
+        generated Create queries """
 
     def visit_BOOLEAN(self, type_, **kw):
-
         return "BOOL"
 
     def visit_TINYINT(self, type_, **kw):
-
         return "TINYINT"
 
 
 class SqreamSQLCompiler(compiler.SQLCompiler):
-    ''' Overriding visit_insert behavior of generating SQL with multiple
-       (?,?) clauses for ORM inserts with parameters  '''
-
-    def visit_insert(self, insert_stmt, **kw):
-
-        compile_state = insert_stmt._compile_state_factory(
-            insert_stmt, self, **kw
-        )
-        insert_stmt = compile_state.statement
-
-        toplevel = not self.stack
-
-        if toplevel:
-            self.isinsert = True
-            if not self.dml_compile_state:
-                self.dml_compile_state = compile_state
-            if not self.compile_state:
-                self.compile_state = compile_state
-
-        self.stack.append(
-            {
-                "correlate_froms": set(),
-                "asfrom_froms": set(),
-                "selectable": insert_stmt,
-            }
-        )
-
-        crud_params = crud._get_crud_params(
-            self, insert_stmt, compile_state, **kw
-        )
-
-        if (
-            not crud_params
-            and not self.dialect.supports_default_values
-            and not self.dialect.supports_default_metavalue
-            and not self.dialect.supports_empty_insert
-        ):
-            raise exc.CompileError(
-                "The '%s' dialect with current database "
-                "version settings does not support empty "
-                "inserts." % self.dialect.name
-            )
-
-        if compile_state._has_multi_parameters:
-            if not self.dialect.supports_multivalues_insert:
-                raise exc.CompileError(
-                    "The '%s' dialect with current database "
-                    "version settings does not support "
-                    "in-place multirow inserts." % self.dialect.name
-                )
-            crud_params_single = crud_params[0]
-        else:
-            crud_params_single = crud_params
-
-        preparer = self.preparer
-        supports_default_values = self.dialect.supports_default_values
-
-        text = "INSERT "
-
-        if insert_stmt._prefixes:
-            text += self._generate_prefixes(
-                insert_stmt, insert_stmt._prefixes, **kw
-            )
-
-        text += "INTO "
-        table_text = preparer.format_table(insert_stmt.table)
-
-        if insert_stmt._hints:
-            _, table_text = self._setup_crud_hints(insert_stmt, table_text)
-
-        if insert_stmt._independent_ctes:
-            for cte in insert_stmt._independent_ctes:
-                cte._compiler_dispatch(self, **kw)
-
-        text += table_text
-
-        if crud_params_single or not supports_default_values:
-            text += " (%s)" % ", ".join(
-                [expr for c, expr, value in crud_params_single]
-            )
-
-        if self.returning or insert_stmt._returning:
-            returning_clause = self.returning_clause(
-                insert_stmt, self.returning or insert_stmt._returning
-            )
-
-            if self.returning_precedes_values:
-                text += " " + returning_clause
-        else:
-            returning_clause = None
-
-        if insert_stmt.select is not None:
-            # placed here by crud.py
-            select_text = self.process(
-                self.stack[-1]["insert_from_select"], insert_into=True, **kw
-            )
-
-            if self.ctes and self.dialect.cte_follows_insert:
-                nesting_level = len(self.stack) if not toplevel else None
-                text += " %s%s" % (
-                    self._render_cte_clause(
-                        nesting_level=nesting_level,
-                        include_following_stack=True,
-                        visiting_cte=kw.get("visiting_cte"),
-                    ),
-                    select_text,
-                )
-            else:
-                text += " %s" % select_text
-        elif not crud_params and supports_default_values:
-            text += " DEFAULT VALUES"
-        # This part would originally generate an insert statement such as
-        # `insert into table test values (?,?), (?,?), (?,?)` which sqream
-        # does not support
-        # <Overriding part> - money is in crud_params[0]
-        elif compile_state._has_multi_parameters:
-            insert_single_values_expr = ", ".join([c[2] for c in crud_params[0]])
-            text += " VALUES (%s)" % insert_single_values_expr
-            if toplevel:
-                self.insert_single_values_expr = insert_single_values_expr
-        # </Overriding part>
-        else:
-            insert_single_values_expr = ", ".join(
-                [value for c, expr, value in crud_params]
-            )
-            text += " VALUES (%s)" % insert_single_values_expr
-            if toplevel:
-                self.insert_single_values_expr = insert_single_values_expr
-
-        if insert_stmt._post_values_clause is not None:
-            post_values_clause = self.process(
-                insert_stmt._post_values_clause, **kw
-            )
-            if post_values_clause:
-                text += " " + post_values_clause
-
-        if returning_clause and not self.returning_precedes_values:
-            text += " " + returning_clause
-
-        if self.ctes and not self.dialect.cte_follows_insert:
-            nesting_level = len(self.stack) if not toplevel else None
-            text = (
-                self._render_cte_clause(
-                    nesting_level=nesting_level,
-                    include_following_stack=True,
-                    visiting_cte=kw.get("visiting_cte"),
-                )
-                + text
-            )
-
-        self.stack.pop(-1)
-
-        return text
-
     def visit_select(
         self,
         select_stmt,
@@ -216,7 +61,12 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
         compile_state = select_stmt._compile_state_factory(
             select_stmt, self, **kwargs
         )
+        kwargs["ambiguous_table_name_map"] = (
+            compile_state._ambiguous_table_name_map
+        )
+
         select_stmt = compile_state.statement
+
         if select_stmt.whereclause is not None and \
                 (hasattr(select_stmt.whereclause, "left") and hasattr(select_stmt.whereclause, "right")) and (
                 (hasattr(select_stmt.whereclause.left, "value")) or (hasattr(select_stmt.whereclause.right, "value"))):
@@ -290,8 +140,7 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             byfrom = None
 
         if select_stmt._independent_ctes:
-            for cte in select_stmt._independent_ctes:
-                cte._compiler_dispatch(self, **kwargs)
+            self._dispatch_independent_ctes(select_stmt, kwargs)
 
         if select_stmt._prefixes:
             text += self._generate_prefixes(
@@ -356,7 +205,9 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             )
 
             self._result_columns = [
-                (key, name, tuple(translate.get(o, o) for o in obj), type_)
+                compiler.ResultColumnsEntry(
+                    key, name, tuple(translate.get(o, o) for o in obj), type_
+                )
                 for key, name, obj, type_ in self._result_columns
             ]
 
@@ -383,13 +234,7 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
         # In compound query, CTEs are shared at the compound level
         if self.ctes and (not is_embedded_select or toplevel):
             nesting_level = len(self.stack) if not toplevel else None
-            text = (
-                self._render_cte_clause(
-                    nesting_level=nesting_level,
-                    visiting_cte=kwargs.get("visiting_cte"),
-                )
-                + text
-            )
+            text = self._render_cte_clause(nesting_level=nesting_level) + text
 
         if select_stmt._suffixes:
             text += " " + self._generate_prefixes(
@@ -443,8 +288,7 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
                 "Unary expression has no operator or modifier"
             )
 
-
-    def visit_delete(self, delete_stmt, **kw):
+    def visit_delete(self, delete_stmt, visiting_cte=None, **kw):
         compile_state = delete_stmt._compile_state_factory(
             delete_stmt, self, **kw
         )
@@ -460,7 +304,12 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
                 (hasattr(delete_stmt.whereclause.left, "value")) or (hasattr(delete_stmt.whereclause.right, "value"))):
             raise NotSupportedException("Where clause of parameterized query not supported on SQream")
 
-        toplevel = not self.stack
+        if visiting_cte is not None:
+            kw["visiting_cte"] = visiting_cte
+            toplevel = False
+        else:
+            toplevel = not self.stack
+
         if toplevel:
             self.isdelete = True
             if not self.dml_compile_state:
@@ -468,7 +317,16 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             if not self.compile_state:
                 self.compile_state = compile_state
 
-        extra_froms = compile_state._extra_froms
+        if self.linting & compiler.COLLECT_CARTESIAN_PRODUCTS:
+            from_linter = compiler.FromLinter({}, set())
+            warn_linting = self.linting & compiler.WARN_LINTING
+            if toplevel:
+                self.from_linter = from_linter
+        else:
+            from_linter = None
+            warn_linting = False
+
+        extra_froms = compile_state._extra_fromss
 
         correlate_froms = {delete_stmt.table}.union(extra_froms)
         self.stack.append(
@@ -487,9 +345,24 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             )
 
         text += "FROM "
-        table_text = self.delete_table_clause(
-            delete_stmt, delete_stmt.table, extra_froms
-        )
+
+        try:
+            table_text = self.delete_table_clause(
+                delete_stmt,
+                delete_stmt.table,
+                extra_froms,
+                from_linter=from_linter,
+            )
+        except TypeError:
+            # anticipate 3rd party dialects that don't include **kw
+            # TODO: remove in 2.1
+            table_text = self.delete_table_clause(
+                delete_stmt, delete_stmt.table, extra_froms
+            )
+            if from_linter:
+                _ = self.process(delete_stmt.table, from_linter=from_linter)
+
+        crud._get_crud_params(self, delete_stmt, compile_state, toplevel, **kw)
 
         if delete_stmt._hints:
             dialect_hints, table_text = self._setup_crud_hints(
@@ -499,16 +372,16 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             dialect_hints = None
 
         if delete_stmt._independent_ctes:
-            for cte in delete_stmt._independent_ctes:
-                cte._compiler_dispatch(self, **kw)
+            self._dispatch_independent_ctes(delete_stmt, kw)
 
         text += table_text
 
-        if delete_stmt._returning:
-            if self.returning_precedes_values:
-                text += " " + self.returning_clause(
-                    delete_stmt, delete_stmt._returning
-                )
+        if (self.implicit_returning or delete_stmt._returning) and self.returning_precedes_values:
+            text += " " + self.returning_clause(
+                delete_stmt,
+                self.implicit_returning or delete_stmt._returning,
+                populate_result_map=toplevel,
+            )
 
         if extra_froms:
             extra_from_text = self.delete_extra_from_clause(
@@ -516,7 +389,8 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
                 delete_stmt.table,
                 extra_froms,
                 dialect_hints,
-                **kw
+                from_linter=from_linter,
+                **kw,
             )
             if extra_from_text:
                 text += " " + extra_from_text
@@ -528,37 +402,43 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             if t:
                 text += " WHERE " + t
 
-        if delete_stmt._returning and not self.returning_precedes_values:
+        if (self.implicit_returning or delete_stmt._returning) and not self.returning_precedes_values:
             text += " " + self.returning_clause(
-                delete_stmt, delete_stmt._returning
+                delete_stmt,
+                self.implicit_returning or delete_stmt._returning,
+                populate_result_map=toplevel,
             )
 
         if self.ctes:
             nesting_level = len(self.stack) if not toplevel else None
-            text = (
-                self._render_cte_clause(
-                    nesting_level=nesting_level,
-                    visiting_cte=kw.get("visiting_cte"),
-                )
-                + text
-            )
+            text = self._render_cte_clause(nesting_level=nesting_level) + text
+
+        if warn_linting:
+            assert from_linter is not None
+            from_linter.warn(stmt_type="DELETE")
 
         self.stack.pop(-1)
 
         return text
 
-    def visit_update(self, update_stmt, **kw):
+    def visit_update(self, update_stmt, visiting_cte=None, **kw):
         compile_state = update_stmt._compile_state_factory(
             update_stmt, self, **kw
         )
+
         update_stmt = compile_state.statement
+
+        if visiting_cte is not None:
+            kw["visiting_cte"] = visiting_cte
+            toplevel = False
+        else:
+            toplevel = not self.stack
 
         if update_stmt.whereclause is not None and \
                 (hasattr(update_stmt.whereclause, "left") and hasattr(update_stmt.whereclause, "right")) and (
                 (hasattr(update_stmt.whereclause.left, "value")) or (hasattr(update_stmt.whereclause.right, "value"))):
             raise NotSupportedException("Where clause of parameterized query not supported on SQream")
 
-        toplevel = not self.stack
         if toplevel:
             self.isupdate = True
             if not self.dml_compile_state:
@@ -566,12 +446,21 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             if not self.compile_state:
                 self.compile_state = compile_state
 
+        if self.linting & compiler.COLLECT_CARTESIAN_PRODUCTS:
+            from_linter = compiler.FromLinter({}, set())
+            warn_linting = self.linting & compiler.WARN_LINTING
+            if toplevel:
+                self.from_linter = from_linter
+        else:
+            from_linter = None
+            warn_linting = False
+
         extra_froms = compile_state._extra_froms
         is_multitable = bool(extra_froms)
 
         if is_multitable:
             # main table might be a JOIN
-            main_froms = set(selectable._from_objects(update_stmt.table))
+            main_froms = set(compiler._from_objects(update_stmt.table))
             render_extra_froms = [
                 f for f in extra_froms if f not in main_froms
             ]
@@ -596,11 +485,17 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             )
 
         table_text = self.update_tables_clause(
-            update_stmt, update_stmt.table, render_extra_froms, **kw
+            update_stmt,
+            update_stmt.table,
+            render_extra_froms,
+            from_linter=from_linter,
+            **kw,
         )
-        crud_params = crud._get_crud_params(
-            self, update_stmt, compile_state, **kw
+
+        crud_params_struct = crud._get_crud_params(
+            self, update_stmt, compile_state, toplevel, **kw
         )
+        crud_params = crud_params_struct.single_params
 
         if update_stmt._hints:
             dialect_hints, table_text = self._setup_crud_hints(
@@ -616,12 +511,19 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
         text += table_text
 
         text += " SET "
-        text += ", ".join(expr + "=" + value for c, expr, value in crud_params)
+        text += ", ".join(
+            expr + "=" + value
+            for _, expr, value, _ in compiler.cast(
+                "List[Tuple[Any, str, str, Any]]", crud_params
+            )
+        )
 
-        if self.returning or update_stmt._returning:
+        if self.implicit_returning or update_stmt._returning:
             if self.returning_precedes_values:
                 text += " " + self.returning_clause(
-                    update_stmt, self.returning or update_stmt._returning
+                    update_stmt,
+                    self.implicit_returning or update_stmt._returning,
+                    populate_result_map=toplevel,
                 )
 
         if extra_froms:
@@ -630,14 +532,15 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
                 update_stmt.table,
                 render_extra_froms,
                 dialect_hints,
-                **kw
+                from_linter=from_linter,
+                **kw,
             )
             if extra_from_text:
                 text += " " + extra_from_text
 
         if update_stmt._where_criteria:
             t = self._generate_delimited_and_list(
-                update_stmt._where_criteria, **kw
+                update_stmt._where_criteria, from_linter=from_linter, **kw
             )
             if t:
                 text += " WHERE " + t
@@ -646,22 +549,20 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
         if limit_clause:
             text += " " + limit_clause
 
-        if (
-            self.returning or update_stmt._returning
-        ) and not self.returning_precedes_values:
+        if (self.implicit_returning or update_stmt._returning) and not self.returning_precedes_values:
             text += " " + self.returning_clause(
-                update_stmt, self.returning or update_stmt._returning
+                update_stmt,
+                self.implicit_returning or update_stmt._returning,
+                populate_result_map=toplevel,
             )
 
         if self.ctes:
             nesting_level = len(self.stack) if not toplevel else None
-            text = (
-                self._render_cte_clause(
-                    nesting_level=nesting_level,
-                    visiting_cte=kw.get("visiting_cte"),
-                )
-                + text
-            )
+            text = self._render_cte_clause(nesting_level=nesting_level) + text
+
+        if warn_linting:
+            assert from_linter is not None
+            from_linter.warn(stmt_type="UPDATE")
 
         self.stack.pop(-1)
 
@@ -678,6 +579,8 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
             add_to_result_map(func.name, func.name, (), func.type)
 
         disp = getattr(self, "visit_%s_func" % func.name.lower(), None)
+        text: str
+
         if disp:
             text = disp(func, **kwargs)
         else:
@@ -768,7 +671,6 @@ class SqreamSQLCompiler(compiler.SQLCompiler):
 
 
 class SqreamDDLCompiler(compiler.DDLCompiler):
-
     def visit_identity_column(self, identity, **kw):
         self.check_identity_options(identity)
         text = " IDENTITY"

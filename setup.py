@@ -4,7 +4,7 @@ from setuptools import setup
 setup_params = dict(
     
     name =             'pysqream_sqlalchemy',
-    version =          '0.9',
+    version =          '1.0',
     description =      'SQLAlchemy dialect for SQreamDB', 
     long_description = open("README.rst", "r").read() + '\n\n',
     url=               "https://github.com/SQream/pysqream_sqlalchemy",
@@ -13,7 +13,7 @@ setup_params = dict(
     author_email =     'info@sqream.com',
     
     classifiers =      [
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.9",
         "License :: OSI Approved :: BSD License",
         "Operating System :: OS Independent",
     ],
@@ -21,10 +21,10 @@ setup_params = dict(
 
     python_requires =  '>=3.9',
     
-    install_requires = ['sqlalchemy==1.4.46',
+    install_requires = ['sqlalchemy==2.0.27',
                         'pysqream==3.2.5',
                         'setuptools>=57.4.0',
-                        'pandas>=1.5.3',
+                        'pandas==2.2.1',
                         'numpy>=1.20',
                         'alembic>=1.10.2'],
     
