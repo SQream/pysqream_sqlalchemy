@@ -217,7 +217,6 @@ class TestBaseCRUD(TestBase):
             def __repr__(self):
                 return f"Crud(id={self.i})"
 
-        # self.crud_table = Crud
         return Crud
 
     @pytest.fixture
@@ -256,16 +255,10 @@ class TestBaseCRUD(TestBase):
             "".join(choices("ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=randint(5, 50)))
         )
 
-    def drop_crud_table_or_view_if_exists(self,
-                                          crud_table,
-                                          executor: Union[Connection, Session] = None,
-                                          drop_table: bool = True,
-                                          drop_view: bool = False) -> None:
+    def recreate_all_via_metadata(self, executor: Union[Connection, Session] = None):
         if not executor:
             executor = self.session
-        if drop_view:
-            if self.view_name in self.insp.get_view_names():
-                executor.execute(text(f"drop view {self.view_name}"))
-        if drop_table:
-            if self.insp.has_table(self.table_name):
-                crud_table.drop(bind=self.session.connection())
+        if self.view_name in self.insp.get_view_names():
+            executor.execute(text(f"drop view {self.view_name}"))
+        self.metadata.drop_all(bind=self.engine)
+        self.metadata.create_all(bind=self.engine)

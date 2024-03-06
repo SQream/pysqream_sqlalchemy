@@ -18,10 +18,6 @@ dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
 
 class TestCreate(TestBaseCRUD):
 
-    def recreate_all_via_metadata(self):
-        self.metadata.drop_all(bind=self.engine)
-        self.metadata.create_all(bind=self.engine)
-
     def test_create_database(self):
         if self.database_name in self.get_databases(self.session):
             self.session.execute(text(f"drop database {self.database_name}"))
@@ -184,7 +180,6 @@ class TestCreate(TestBaseCRUD):
             assert len(views_new) == len(views_old) - 1
             assert self.view_name not in views_new
 
-    # @pytest.mark.skip(reason="Class 'sqlalchemy.sql.schema.Table' is not mapped: session.add(obj) isn't working")
     def test_create_view_with_session_context_manager(self, crud_table):
         new_session = sessionmaker(self.engine)
         with new_session.begin() as session:
@@ -226,9 +221,7 @@ class TestRead(TestBaseCRUD):
         )
     )
     def test_read_from_table(self, crud_table, statement, expected_result):
-        self.drop_crud_table_or_view_if_exists(crud_table)
-
-        crud_table.create(bind=self.engine)
+        self.recreate_all_via_metadata()
 
         self.insert_values_into_table(crud_table, rows_amount=100)
 
@@ -247,10 +240,7 @@ class TestRead(TestBaseCRUD):
     )
     def test_read_from_table_with_engine_context_manager(self, crud_table, statement, expected_result):
         with self.engine.connect() as connection:
-            if self.insp.has_table(self.table_name):
-                crud_table.drop(bind=connection)
-
-            crud_table.create(bind=connection)
+            self.recreate_all_via_metadata(executor=connection)
 
             self.insert_values_into_table(crud_table, executor=connection, rows_amount=100)
 
@@ -270,10 +260,7 @@ class TestRead(TestBaseCRUD):
     def test_read_from_table_with_session_context_manager(self, crud_table, statement, expected_result):
         new_session = sessionmaker(self.engine)
         with new_session.begin() as session:
-            if self.insp.has_table(self.table_name):
-                crud_table.drop(bind=session.connection())
-
-            crud_table.create(bind=session.connection())
+            self.recreate_all_via_metadata(executor=session)
 
             self.insert_values_into_table(crud_table, executor=session, rows_amount=100)
 
@@ -284,9 +271,7 @@ class TestRead(TestBaseCRUD):
             assert len(result1) == expected_result == len(result2)
 
     def test_read_from_view(self, crud_table):
-        self.drop_crud_table_or_view_if_exists(crud_table, drop_view=True)
-
-        crud_table.create(bind=self.engine)
+        self.recreate_all_via_metadata()
 
         self.session.execute(text(f"create view {self.view_name} as select * from {self.table_name}"))
 
@@ -300,12 +285,7 @@ class TestRead(TestBaseCRUD):
 
     def test_read_from_view_with_engine_context_manager(self, crud_table):
         with self.engine.connect() as connection:
-            if self.insp.has_table(self.table_name):
-                crud_table.drop(bind=connection)
-            if self.view_name in self.insp.get_view_names():
-                connection.execute(text(f"drop view {self.view_name}"))
-
-            crud_table.create(bind=connection)
+            self.recreate_all_via_metadata(executor=connection)
 
             self.session.execute(text(f"create view {self.view_name} as select * from {self.table_name}"))
 
@@ -320,12 +300,7 @@ class TestRead(TestBaseCRUD):
     def test_read_from_view_with_session_context_manager(self, crud_table):
         new_session = sessionmaker(self.engine)
         with new_session.begin() as session:
-            if self.insp.has_table(self.table_name):
-                crud_table.drop(bind=session.connection())
-            if self.view_name in self.insp.get_view_names():
-                session.execute(text(f"drop view {self.view_name}"))
-
-            crud_table.create(bind=session.connection())
+            self.recreate_all_via_metadata(executor=session)
 
             self.session.execute(text(f"create view {self.view_name} as select * from {self.table_name}"))
 
@@ -348,9 +323,8 @@ class TestRead(TestBaseCRUD):
         )
     )
     def test_read_from_sqream_catalog(self, crud_table, query, entity_name):
-        self.drop_crud_table_or_view_if_exists(crud_table, drop_view=True)
+        self.recreate_all_via_metadata()
 
-        crud_table.create(bind=self.engine)
         self.session.execute(text(f"create view {self.view_name} as select * from {self.table_name}"))
 
         self.insert_values_into_table(crud_table, rows_amount=10)
@@ -375,12 +349,8 @@ class TestRead(TestBaseCRUD):
     )
     def test_read_from_sqream_catalog_with_engine_context_manager(self, crud_table, query, entity_name):
         with self.engine.connect() as connection:
-            if self.view_name in self.insp.get_view_names():
-                connection.execute(text(f"drop view {self.view_name}"))
-            if self.insp.has_table(self.table_name):
-                crud_table.drop(bind=connection)
+            self.recreate_all_via_metadata(executor=connection)
 
-            crud_table.create(bind=connection)
             connection.execute(text(f"create view {self.view_name} as select * from {self.table_name}"))
 
             self.insert_values_into_table(crud_table, rows_amount=10, executor=connection)
@@ -406,12 +376,8 @@ class TestRead(TestBaseCRUD):
     def test_read_from_sqream_catalog_with_session_context_manager(self, crud_table, query, entity_name):
         new_session = sessionmaker(self.engine)
         with new_session.begin() as session:
-            if self.view_name in self.insp.get_view_names():
-                session.execute(text(f"drop view {self.view_name}"))
-            if self.insp.has_table(self.table_name):
-                crud_table.drop(bind=session.connection())
+            self.recreate_all_via_metadata(executor=session)
 
-            crud_table.create(bind=session.connection())
             session.execute(text(f"create view {self.view_name} as select * from {self.table_name}"))
 
             self.insert_values_into_table(crud_table, rows_amount=10, executor=session)
@@ -431,13 +397,8 @@ class TestRead(TestBaseCRUD):
             Column("i", Integer),
             Column("t", Text),
         )
+        self.recreate_all_via_metadata()
 
-        self.drop_crud_table_or_view_if_exists(crud_table)
-        if self.insp.has_table(table1.name):
-            table1.drop(bind=self.engine)
-
-        crud_table.create(bind=self.engine)
-        table1.create(bind=self.engine)
 
         values1 = [(i, 't' * i) for i in range(1, 11)]
         values2 = [self.get_random_row_values_for_crud_table(i) for i in range(1, 11)]
@@ -462,13 +423,7 @@ class TestRead(TestBaseCRUD):
             Column("t", Text),
         )
         with self.engine.connect() as connection:
-            if self.insp.has_table(self.table_name):
-                crud_table.drop(bind=connection)
-            if self.insp.has_table(table1.name):
-                table1.drop(bind=connection)
-
-            crud_table.create(bind=connection)
-            table1.create(bind=connection)
+            self.recreate_all_via_metadata(executor=connection)
 
             values1 = [(i, 't' * i) for i in range(1, 11)]
             values2 = [self.get_random_row_values_for_crud_table(i) for i in range(1, 11)]
@@ -494,13 +449,7 @@ class TestRead(TestBaseCRUD):
             Column("t", Text),
         )
         with new_session.begin() as session:
-            if self.insp.has_table(self.table_name):
-                crud_table.drop(bind=session.connection())
-            if self.insp.has_table(table1.name):
-                table1.drop(bind=session.connection())
-
-            crud_table.create(bind=session.connection())
-            table1.create(bind=session.connection())
+            self.recreate_all_via_metadata(executor=session)
 
             values1 = [(i, 't' * i) for i in range(1, 11)]
             values2 = [self.get_random_row_values_for_crud_table(i) for i in range(1, 11)]
@@ -518,9 +467,7 @@ class TestRead(TestBaseCRUD):
             assert len(joined_res) == len(values1)
 
     def test_read_with_filter(self, crud_table):
-        self.drop_crud_table_or_view_if_exists(crud_table)
-
-        crud_table.create(bind=self.engine)
+        self.recreate_all_via_metadata()
 
         self.insert_values_into_table(crud_table, rows_amount=10)
 
@@ -534,10 +481,7 @@ class TestRead(TestBaseCRUD):
 
     def test_read_with_filter_with_engine_context_manager(self, crud_table):
         with self.engine.connect() as connection:
-            if self.insp.has_table(self.table_name):
-                crud_table.drop(bind=connection)
-
-            crud_table.create(bind=connection)
+            self.recreate_all_via_metadata(executor=connection)
 
             self.insert_values_into_table(crud_table, rows_amount=10, executor=connection)
 
@@ -552,10 +496,7 @@ class TestRead(TestBaseCRUD):
     def test_read_with_filter_with_session_context_manager(self, crud_table):
         new_session = sessionmaker(self.engine)
         with new_session.begin() as session:
-            if self.insp.has_table(self.table_name):
-                crud_table.drop(bind=session.connection())
-
-            crud_table.create(bind=session.connection())
+            self.recreate_all_via_metadata(executor=session)
 
             self.insert_values_into_table(crud_table, rows_amount=10, executor=session)
 
@@ -573,6 +514,7 @@ class TestUpdate(TestBaseCRUD):
     def test_session_add_delete(self, crud_table_row):
         self.Base.metadata.drop_all(bind=self.engine)
         self.Base.metadata.create_all(bind=self.engine)
+        self.recreate_all_via_metadata()
 
         row = crud_table_row(i=1,
                              b=True,
@@ -592,10 +534,9 @@ class TestUpdate(TestBaseCRUD):
         )
     )
     def test_insert_into_table(self, crud_table, insert_statement):
-        self.drop_crud_table_or_view_if_exists(crud_table)
+        self.recreate_all_via_metadata()
         rows_amount = 100
 
-        crud_table.create(bind=self.engine)
         values = [self.get_random_row_values_for_crud_table(i) for i in range(1, rows_amount + 1)]
 
         self.session.execute(eval(insert_statement))
@@ -614,11 +555,9 @@ class TestUpdate(TestBaseCRUD):
     )
     def test_insert_into_table_with_engine_context_manager(self, crud_table, insert_statement):
         with (self.engine.connect() as connection):
-            if self.insp.has_table(self.table_name):
-                crud_table.drop(bind=connection)
+            self.recreate_all_via_metadata(executor=connection)
             rows_amount = 100
 
-            crud_table.create(bind=connection)
             values = [self.get_random_row_values_for_crud_table(i) for i in range(1, rows_amount + 1)]
 
             connection.execute(eval(insert_statement))
@@ -638,11 +577,9 @@ class TestUpdate(TestBaseCRUD):
     def test_insert_into_table_with_session_context_manager(self, crud_table, insert_statement):
         new_session = sessionmaker(self.engine)
         with new_session.begin() as session:
-            if self.insp.has_table(self.table_name):
-                crud_table.drop(bind=session.connection())
+            self.recreate_all_via_metadata(executor=session)
             rows_amount = 100
 
-            crud_table.create(bind=session.connection())
             values = [self.get_random_row_values_for_crud_table(i) for i in range(1, rows_amount + 1)]
 
             session.execute(eval(insert_statement))
@@ -653,9 +590,8 @@ class TestUpdate(TestBaseCRUD):
             assert len(result1) == rows_amount == len(result2)
 
     def test_update_table(self, crud_table):
-        self.drop_crud_table_or_view_if_exists(crud_table)
+        self.recreate_all_via_metadata()
 
-        crud_table.create(bind=self.engine)
         insert_statement = crud_table.insert().values([self.get_random_row_values_for_crud_table(1)])
         self.session.execute(insert_statement)
 
@@ -667,10 +603,8 @@ class TestUpdate(TestBaseCRUD):
 
     def test_update_table_with_engine_context_manager(self, crud_table):
         with self.engine.connect() as connection:
-            if self.insp.has_table(self.table_name):
-                crud_table.drop(bind=connection)
+            self.recreate_all_via_metadata(executor=connection)
 
-            crud_table.create(bind=connection)
             insert_statement = crud_table.insert().values([self.get_random_row_values_for_crud_table(1)])
             connection.execute(insert_statement)
 
@@ -683,10 +617,8 @@ class TestUpdate(TestBaseCRUD):
     def test_update_table_with_session_context_manager(self, crud_table):
         new_session = sessionmaker(self.engine)
         with new_session.begin() as session:
-            if self.insp.has_table(self.table_name):
-                crud_table.drop(bind=session.connection())
+            self.recreate_all_via_metadata(executor=session)
 
-            crud_table.create(bind=session.connection())
             insert_statement = crud_table.insert().values([self.get_random_row_values_for_crud_table(1)])
             session.execute(insert_statement)
 
@@ -875,8 +807,7 @@ class TestUtilityFunctions(TestBaseCRUD):
 
     @pytest.mark.parametrize("query", ("select get_ddl('{}')", "select get_statement_permissions('select * from {}')"))
     def test_get_ddl_and_statement_permissions(self, crud_table, query):
-        self.drop_crud_table_or_view_if_exists(crud_table)
-        crud_table.create(bind=self.engine)
+        self.recreate_all_via_metadata()
         result = self.session.execute(text(query.format(self.table_name))).first()
         assert isinstance(result, Row)
         assert len(result) in (1, 3)
@@ -884,10 +815,7 @@ class TestUtilityFunctions(TestBaseCRUD):
     @pytest.mark.parametrize("query", ("select get_ddl('{}')", "select get_statement_permissions('select * from {}')"))
     def test_get_ddl_and_statement_permissions_with_engine_context_manager(self, crud_table, query):
         with self.engine.connect() as connection:
-            if self.insp.has_table(self.table_name):
-                crud_table.drop(bind=connection)
-
-            crud_table.create(bind=connection)
+            self.recreate_all_via_metadata(executor=connection)
             result = connection.execute(text(query.format(self.table_name))).first()
             assert isinstance(result, Row)
             assert len(result) in (1, 3)
@@ -896,10 +824,7 @@ class TestUtilityFunctions(TestBaseCRUD):
     def test_get_ddl_and_statement_permissions_with_session_context_manager(self, crud_table, query):
         new_session = sessionmaker(self.engine)
         with new_session.begin() as session:
-            if self.insp.has_table(self.table_name):
-                crud_table.drop(bind=session.connection())
-
-            crud_table.create(bind=session.connection())
+            self.recreate_all_via_metadata(executor=session)
             result = session.execute(text(query.format(self.table_name))).first()
             assert isinstance(result, Row)
             assert len(result) in (1, 3)
