@@ -6,7 +6,7 @@ Prerequisites
 ================
 
 * Python > 3.9+
-* SQLAlchemy = 1.4.46
+* SQLAlchemy = 2.0.27
 * SQream DB-API Connector = 3.2.5
 * Cython (optional - improves performance)
 
@@ -80,8 +80,8 @@ The following example shows how to pull a table in Pandas. This example uses the
 .. code-block:: python
 
    import sqlalchemy as sa
-   from sqlalchemy.engine.url import URL
    import pandas as pd
+   from sqlalchemy.engine.url import URL
 
 
 	engine_url = sa.engine.url.URL(
