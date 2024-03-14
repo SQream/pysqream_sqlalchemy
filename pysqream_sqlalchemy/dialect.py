@@ -1,7 +1,7 @@
 import re
 from sqlalchemy.engine.default import DefaultDialect
-from sqlalchemy.types import Boolean, SmallInteger, Integer, BigInteger, Float, Date, DateTime, String, Unicode, Numeric, ARRAY
-from base import SqreamSQLCompiler, SqreamTypeCompiler, TINYINT, SqreamDDLCompiler
+from sqlalchemy.types import Boolean, SmallInteger, Integer, BigInteger, Float, Date, DateTime, String, Unicode, Numeric
+from pysqream_sqlalchemy.base import SqreamSQLCompiler, SqreamTypeCompiler, TINYINT, SqreamDDLCompiler
 from sqlalchemy.dialects import registry
 from sqlalchemy import text
 
