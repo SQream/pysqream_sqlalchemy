@@ -11,7 +11,7 @@ sys.path.insert(0, 'tests')
 import pytest
 import pandas as pd
 import sqlalchemy as sa
-from sqlalchemy import create_engine, select, Table, Column, insert, text, DDL, orm
+from sqlalchemy import create_engine, select, Table, Column, insert, text, DDL, orm, Identity, BigInteger, MetaData, engine
 from test_base import TestBase, Logger, TestBaseTI
 from alembic.runtime.migration import MigrationContext
 from alembic.operations import Operations
@@ -167,7 +167,7 @@ class TestAlembic(TestBase):
 
         try:
             op.drop_table('waste')
-        except:
+        except Exception:
             pass
 
         t = op.create_table('waste',
@@ -268,3 +268,84 @@ class TestNew(TestBase):
         stmt = select(table1).where(text("id=1"))
         res = self.session.execute(stmt).fetchall()
         assert res == values, res
+
+
+class TestDeclarativeBase(TestBase):  
+    # negative  
+    def test_SQ_16994_negative(self):
+        engine_url = engine.url.URL("sqream",
+                                    database="master",
+                                    username="sqream",
+                                    password="sqream",
+                                    host=self.ip,
+                                    port=int(self.port),
+                                    query={})
+        engine_obj = create_engine(engine_url, connect_args={"clustered": False, "use_ssl": False})
+        
+        metadata_obj = MetaData(schema="public")
+        
+        class Base(orm.DeclarativeBase):
+            metadata = metadata_obj
+        
+        class TestInsertSQlAlchemy(Base):
+            __tablename__ = "test_insert_sqlalchemy"
+            id: orm.Mapped[int] = orm.mapped_column(
+                BigInteger, primary_key=True
+            )
+            
+        Base.metadata.drop_all(engine_obj)
+        with pytest.raises(Exception) as e_info:    
+            Base.metadata.create_all(engine_obj)
+            
+        assert "primary key constraints are not supported by SQream" in str(e_info.value)
+        
+        
+    # positive
+    # https://docs.sqlalchemy.org/en/20/faq/ormconfiguration.html#how-do-i-map-a-table-that-has-no-primary-key
+    def test_SQ_16994_positive_1(self):
+        engine_url = engine.url.URL("sqream",
+                                    database="master",
+                                    username="sqream",
+                                    password="sqream",
+                                    host=self.ip,
+                                    port=int(self.port),
+                                    query={})
+        engine_obj = create_engine(engine_url, connect_args={"clustered": False, "use_ssl": False})
+        
+        class Base(orm.DeclarativeBase):
+            metadata = MetaData()
+        
+        class TestInsertSQlAlchemy(Base):
+            __tablename__ = "test_insert_sqlalchemy_3"
+            __mapper_args__ = {
+                "primary_key": ["id"]
+            }
+            id: orm.Mapped[int] = orm.mapped_column(
+                BigInteger
+            )
+            
+        Base.metadata.drop_all(engine_obj)
+        Base.metadata.create_all(engine_obj)
+    
+    # positive
+    def test_SQ_16994_positive_2(self):
+        engine_url = engine.url.URL("sqream",
+                                    database="master",
+                                    username="sqream",
+                                    password="sqream",
+                                    host=self.ip,
+                                    port=int(self.port),
+                                    query={})
+        engine_obj = create_engine(engine_url, connect_args={"clustered": False, "use_ssl": False})
+        
+        class Base(orm.DeclarativeBase):
+            metadata = MetaData()
+        
+        class TestInsertSQlAlchemy(Base):
+            __tablename__ = "test_insert_sqlalchemy_2"
+            id: orm.Mapped[int] = orm.mapped_column(
+                BigInteger, Identity(start=0), primary_key=True
+            )
+            
+        Base.metadata.drop_all(engine_obj)    
+        Base.metadata.create_all(engine_obj)
