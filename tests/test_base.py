@@ -74,6 +74,10 @@ class TestBaseOrm(TestBase):
     @pytest.fixture()
     def ip(self, pytestconfig):
         return pytestconfig.getoption("ip")
+    
+    @pytest.fixture()
+    def port(self, pytestconfig):
+        return pytestconfig.getoption("port")
 
     @pytest.fixture()
     def Base(self, pytestconfig):
