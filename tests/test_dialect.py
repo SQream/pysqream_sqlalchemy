@@ -268,3 +268,19 @@ class TestNew(TestBase):
         stmt = select(table1).where(text("id=1"))
         res = self.session.execute(stmt).fetchall()
         assert res == values, res
+
+    def test_2(self):
+        table2 = Table(
+            'table2', self.metadata,
+            Column("id", sa.Integer), Column("name", sa.UnicodeText), Column("age", sa.Integer)
+        )
+
+        try:
+            table2.create(bind=self.engine)
+        except Exception as e:
+            assert "table with the same name already exists" in str(e)
+            if "table with the same name already exists" in str(e):
+                table2.drop(bind=self.engine)
+                table2.create(bind=self.engine)
+            else:
+                raise Exception(e)
