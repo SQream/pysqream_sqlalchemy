@@ -130,8 +130,12 @@ class SqreamDialect(DefaultDialect):
         # 0,public.fuzz
         return [schema_view.split(".", 1)[1] for idx, schema_view in connection.execute(text("select get_views()")).fetchall() if schema_view.split(".", 1)[0] == schema]
 
-    def has_table(self, connection, table_name, schema=None, info_cache=None):
-        return table_name in self.get_table_names(connection, schema, info_cache=None)
+    def has_table(self, connection, table_name, schema=None, info_cache=None) -> bool:
+        if schema is None:
+            schema = connection.dialect.default_schema_name
+        query = text(f"select is_table_exists('{schema}','{table_name}')")
+        is_table_exists = connection.execute(query).first()
+        return is_table_exists[0]
 
     def get_columns(self, connection, table_name, schema=None, **kwargs):
         """
