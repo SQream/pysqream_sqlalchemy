@@ -5,9 +5,10 @@ SQLAlchemy Dialect for SQream DB
 Prerequisites
 ================
 
-* Python > 3.9+
-* SQLAlchemy = 2.0.27
-* SQream DB-API Connector = 3.2.5
+* SQream => 4.5.6
+* Python == 3.9
+* SQLAlchemy == 2.0.27
+* SQream DB-API Connector == 3.2.5
 * Cython (optional - improves performance)
 
 Installing SQream SQLAlchemy
