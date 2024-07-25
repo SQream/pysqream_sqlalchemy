@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup_params = dict(
     name='pysqream_sqlalchemy',
-    version='1.2',
+    version='1.3',
     description='SQLAlchemy dialect for SQreamDB',
     long_description=open("README.rst", "r").read() + '\n\n',
     url="https://github.com/SQream/pysqream_sqlalchemy",
@@ -21,10 +21,10 @@ setup_params = dict(
     python_requires='>=3.9',
     
     install_requires=['sqlalchemy==2.0.27',
-                      'pysqream==3.2.5',
+                      'pysqream>=5.1.0',
                       'setuptools>=57.4.0',
-                      'pandas==2.2.1',
-                      'numpy>=1.20',
+                      'pandas==2.2.2',
+                      'numpy==1.26.4',
                       'alembic>=1.10.2'],
     
     packages=['pysqream_sqlalchemy'],
