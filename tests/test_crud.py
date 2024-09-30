@@ -1,19 +1,16 @@
-import sys
-sys.path.insert(0, 'pysqream_sqlalchemy')
-sys.path.insert(0, 'tests')
-from datetime import datetime, date
+
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Union
 
 import pytest
-from sqlalchemy import text, Table, Column, dialects, Integer, Text, select, Connection, insert
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy import Column, Connection, Integer, Table, Text, dialects, select, text, insert
 from sqlalchemy.engine.row import Row
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.sql import text
+from tests.test_base import TestBaseCRUD
 
-from test_base import TestBaseCRUD
-
-
-dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
+dialects.registry.register("pysqream.dialect", "pysqream_sqlalchemy.dialect", "SqreamDialect")
 
 
 class TestCreate(TestBaseCRUD):
@@ -218,7 +215,7 @@ class TestRead(TestBaseCRUD):
         (
             ("select(crud_table)", 100),
             ("select(crud_table).where(text('i>50'))", 50),
-        )
+        ),
     )
     def test_read_from_table(self, crud_table, statement, expected_result):
         self.recreate_all_via_metadata()
@@ -231,12 +228,28 @@ class TestRead(TestBaseCRUD):
 
         assert len(result1) == expected_result == len(result2)
 
+    # def test_read_from_table_parametrized(self, crud_table):
+    #     self.recreate_all_via_metadata()
+    #
+    #     self.insert_values_into_table(crud_table, rows_amount=10)
+    #
+    #     # Write the select query using SQLAlchemy
+    #     query = select([crud_table.c.i]).where(crud_table.c.i == text(":value"))
+    #
+    #     # Execute the query with parameter binding
+    #     result = connection.execute(query, value=123)  # Replace 123 with actual value
+    #
+    #     # Fetch and print results
+    #     for row in result:
+    #         print(row['i'])
+
+
     @pytest.mark.parametrize(
         ("statement", "expected_result"),
         (
             ("select(crud_table)", 100),
             ("select(crud_table).where(text('i>50'))", 50),
-        )
+        ),
     )
     def test_read_from_table_with_engine_context_manager(self, crud_table, statement, expected_result):
         with self.engine.connect() as connection:
@@ -255,7 +268,7 @@ class TestRead(TestBaseCRUD):
         (
             ("select(crud_table)", 100),
             ("select(crud_table).where(text('i>50'))", 50),
-        )
+        ),
     )
     def test_read_from_table_with_session_context_manager(self, crud_table, statement, expected_result):
         new_session = sessionmaker(self.engine)
@@ -313,14 +326,14 @@ class TestRead(TestBaseCRUD):
             assert len(result1) == 10 == len(result2)
 
     @pytest.mark.parametrize(
-        ('query', "entity_name"),
+        ("query", "entity_name"),
         (
             ("select * from sqream_catalog.tables where table_name = '{}'", TestBaseCRUD.table_name),
             ("select * from sqream_catalog.views where view_name = '{}'", TestBaseCRUD.view_name),
             ("select * from sqream_catalog.chunks join sqream_catalog.tables on "
              "sqream_catalog.tables.table_id = sqream_catalog.chunks.table_id where table_name = '{}'",
              TestBaseCRUD.table_name),
-        )
+        ),
     )
     def test_read_from_sqream_catalog(self, crud_table, query, entity_name):
         self.recreate_all_via_metadata()
@@ -338,14 +351,14 @@ class TestRead(TestBaseCRUD):
         assert len(result1) == 1 == len(result2)
 
     @pytest.mark.parametrize(
-        ('query', "entity_name"),
+        ("query", "entity_name"),
         (
             ("select * from sqream_catalog.tables where table_name = '{}'", TestBaseCRUD.table_name),
             ("select * from sqream_catalog.views where view_name = '{}'", TestBaseCRUD.view_name),
             ("select * from sqream_catalog.chunks join sqream_catalog.tables on "
              "sqream_catalog.tables.table_id = sqream_catalog.chunks.table_id where table_name = '{}'",
              TestBaseCRUD.table_name),
-        )
+        ),
     )
     def test_read_from_sqream_catalog_with_engine_context_manager(self, crud_table, query, entity_name):
         with self.engine.connect() as connection:
@@ -364,14 +377,14 @@ class TestRead(TestBaseCRUD):
             assert len(result1) == 1 == len(result2)
 
     @pytest.mark.parametrize(
-        ('query', "entity_name"),
+        ("query", "entity_name"),
         (
             ("select * from sqream_catalog.tables where table_name = '{}'", TestBaseCRUD.table_name),
             ("select * from sqream_catalog.views where view_name = '{}'", TestBaseCRUD.view_name),
             ("select * from sqream_catalog.chunks join sqream_catalog.tables on "
              "sqream_catalog.tables.table_id = sqream_catalog.chunks.table_id where table_name = '{}'",
              TestBaseCRUD.table_name),
-        )
+        ),
     )
     def test_read_from_sqream_catalog_with_session_context_manager(self, crud_table, query, entity_name):
         new_session = sessionmaker(self.engine)
@@ -392,7 +405,7 @@ class TestRead(TestBaseCRUD):
 
     def test_read_with_join(self, crud_table):
         table1 = Table(
-            'table1',
+            "table1",
             self.metadata,
             Column("i", Integer),
             Column("t", Text),
@@ -400,7 +413,7 @@ class TestRead(TestBaseCRUD):
         self.recreate_all_via_metadata()
 
 
-        values1 = [(i, 't' * i) for i in range(1, 11)]
+        values1 = [(i, "t" * i) for i in range(1, 11)]
         values2 = [self.get_random_row_values_for_crud_table(i) for i in range(1, 11)]
         self.insert_values_into_table(crud_table, rows_amount=10, values=values2)
         self.insert_values_into_table(table1, rows_amount=10, values=values1)
@@ -417,7 +430,7 @@ class TestRead(TestBaseCRUD):
 
     def test_read_with_join_with_engine_context_manager(self, crud_table):
         table1 = Table(
-            'table1',
+            "table1",
             self.metadata,
             Column("i", Integer),
             Column("t", Text),
@@ -425,7 +438,7 @@ class TestRead(TestBaseCRUD):
         with self.engine.connect() as connection:
             self.recreate_all_via_metadata(executor=connection)
 
-            values1 = [(i, 't' * i) for i in range(1, 11)]
+            values1 = [(i, "t" * i) for i in range(1, 11)]
             values2 = [self.get_random_row_values_for_crud_table(i) for i in range(1, 11)]
             self.insert_values_into_table(crud_table, rows_amount=10, values=values2, executor=connection)
             self.insert_values_into_table(table1, rows_amount=10, values=values1, executor=connection)
@@ -443,7 +456,7 @@ class TestRead(TestBaseCRUD):
     def test_read_with_join_with_session_context_manager(self, crud_table):
         new_session = sessionmaker(self.engine)
         table1 = Table(
-            'table1',
+            "table1",
             self.metadata,
             Column("i", Integer),
             Column("t", Text),
@@ -451,7 +464,7 @@ class TestRead(TestBaseCRUD):
         with new_session.begin() as session:
             self.recreate_all_via_metadata(executor=session)
 
-            values1 = [(i, 't' * i) for i in range(1, 11)]
+            values1 = [(i, "t" * i) for i in range(1, 11)]
             values2 = [self.get_random_row_values_for_crud_table(i) for i in range(1, 11)]
             self.insert_values_into_table(crud_table, rows_amount=10, values=values2, executor=session)
             self.insert_values_into_table(table1, rows_amount=10, values=values1, executor=session)
@@ -531,7 +544,7 @@ class TestUpdate(TestBaseCRUD):
         (
             "crud_table.insert().values(values)",
             "insert(crud_table).values(values)",
-        )
+        ),
     )
     def test_insert_into_table(self, crud_table, insert_statement):
         self.recreate_all_via_metadata()
@@ -551,7 +564,7 @@ class TestUpdate(TestBaseCRUD):
         (
             "crud_table.insert().values(values)",
             "insert(crud_table).values(values)",
-        )
+        ),
     )
     def test_insert_into_table_with_engine_context_manager(self, crud_table, insert_statement):
         with (self.engine.connect() as connection):
@@ -572,7 +585,7 @@ class TestUpdate(TestBaseCRUD):
         (
             "crud_table.insert().values(values)",
             "insert(crud_table).values(values)",
-        )
+        ),
     )
     def test_insert_into_table_with_session_context_manager(self, crud_table, insert_statement):
         new_session = sessionmaker(self.engine)
@@ -783,8 +796,7 @@ class TestDelete(TestBaseCRUD):
 
 
 class TestUtilityFunctions(TestBaseCRUD):
-    """
-    I took all utility functions below from:
+    """I took all utility functions below from:
     https://docs.sqream.com/en/latest/search.html?q=utility&check_keywords=yes&area=default
     """
 
@@ -798,7 +810,7 @@ class TestUtilityFunctions(TestBaseCRUD):
                 f"select get_data_metrics('daily', '{datetime.now()}', '{datetime.now()}')",
                 "select get_gpu_info()",
                 "select show_last_node_info()",
-        )
+        ),
     )
     def test_most_used_utility_functions(self, query):
         result = self.session.execute(text(query)).fetchall()

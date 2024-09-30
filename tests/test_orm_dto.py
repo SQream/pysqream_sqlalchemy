@@ -1,18 +1,32 @@
-import os
-import sys
-sys.path.insert(0, 'pysqream_sqlalchemy')
-sys.path.insert(0, 'tests')
-import pytest
-import sqlalchemy as sa
-from test_base import TestBaseOrm
-from sqlalchemy import select, dialects, Table, Column, union_all, func, distinct, case, cast, Numeric, \
-    extract, nulls_first, desc, nulls_last, asc, true, false
-from sqlalchemy.sql import exists
-from sqlalchemy.orm import aliased, Session
+
 from datetime import datetime
 
+import pytest
+import sqlalchemy as sa
+from sqlalchemy import (
+    Column,
+    Numeric,
+    Table,
+    asc,
+    case,
+    cast,
+    desc,
+    dialects,
+    distinct,
+    extract,
+    false,
+    func,
+    nulls_first,
+    nulls_last,
+    select,
+    true,
+    union_all,
+)
+from sqlalchemy.orm import Session, aliased
+from sqlalchemy.sql import exists
+from tests.test_base import TestBaseOrm
 
-dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
+dialects.registry.register("pysqream.dialect", "pysqream_sqlalchemy.dialect", "SqreamDialect")
 
 
 class TestOrmDto(TestBaseOrm):
@@ -36,7 +50,7 @@ class TestOrmDto(TestBaseOrm):
     def test_select_where_not_supported(self):
 
         with pytest.raises(Exception) as e_info:
-            stmt = self.table1.select().where(self.table1.c.id == '1')
+            stmt = self.table1.select().where(self.table1.c.id == "1")
             self.session.execute(stmt)
 
         assert "Where clause of parameterized query not supported on SQream" in str(e_info.value)
@@ -70,7 +84,7 @@ class TestOrmDto(TestBaseOrm):
     def test_grouping_sets(self):
 
         stmt = select(
-            func.sum(self.user.id), self.user.name, self.user.fullname
+            func.sum(self.user.id), self.user.name, self.user.fullname,
         ).group_by(func.grouping_sets(self.user.name, self.user.fullname))
         with pytest.raises(Exception) as e_info:
             with Session(self.engine) as session:
@@ -91,7 +105,7 @@ class TestOrmDto(TestBaseOrm):
 
         join_stmt = self.table1.join(self.table2, self.table1.c.id == self.table2.c.id)
         with pytest.raises(Exception) as e_info:
-            stmt = select(self.table1).select_from(join_stmt).where(self.table1.c.id == '1')
+            stmt = select(self.table1).select_from(join_stmt).where(self.table1.c.id == "1")
             self.session.execute(stmt)
         assert "Where clause of parameterized query not supported on SQream" in str(e_info.value), e_info.value
 
@@ -106,13 +120,13 @@ class TestOrmDto(TestBaseOrm):
     def test_select_multiple_join(self):
 
         table3 = Table(
-            'table3', self.metadata,
-            Column("id", sa.Integer), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+            "table3", self.metadata,
+            Column("id", sa.Integer), Column("name", sa.UnicodeText), Column("value", sa.Integer),
         )
 
         table4 = Table(
-            'table4', self.metadata,
-            Column("id", sa.Integer), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+            "table4", self.metadata,
+            Column("id", sa.Integer), Column("name", sa.UnicodeText), Column("value", sa.Integer),
         )
 
         expected_stmt = f"SELECT {self.table1.c.id}, {self.table1.c.name}, {self.table1.c.value}, " \
@@ -123,7 +137,7 @@ class TestOrmDto(TestBaseOrm):
                         f"JOIN {table4.name} ON {self.table1.c.id} = {table4.c.id}"
 
         stmt = select(self.table1, self.table2).join_from(
-            self.table1, self.table2, self.table1.c.id == self.table2.c.id
+            self.table1, self.table2, self.table1.c.id == self.table2.c.id,
         ).join_from(self.table1, table3, self.table1.c.id == table3.c.id)\
             .join_from(self.table1, table4, self.table1.c.id == table4.c.id)
         assert expected_stmt == str(stmt)
@@ -209,10 +223,10 @@ class TestOrmDto(TestBaseOrm):
         stmt = select(self.user). \
             where(
             case(
-                (self.user.name == 'spongebob', 'S'),
-                (self.user.name == 'jack', 'J'),
-                else_='E'
-            )
+                (self.user.name == "spongebob", "S"),
+                (self.user.name == "jack", "J"),
+                else_="E",
+            ),
         )
 
         with pytest.raises(Exception) as e_info:
@@ -316,7 +330,7 @@ class TestOrmDto(TestBaseOrm):
 
     def test_char_length_not_supported(self):
 
-        stmt = select(func.char_length('daniel'))
+        stmt = select(func.char_length("daniel"))
         with pytest.raises(Exception) as e_info:
             with Session(self.engine) as session:
                 session.execute(stmt)
@@ -334,7 +348,7 @@ class TestOrmDto(TestBaseOrm):
 
     def test_cube_not_supported(self):
 
-        stmt = select(func.sum(self.user.id), self.user.name, self.user.fullname
+        stmt = select(func.sum(self.user.id), self.user.name, self.user.fullname,
                 ).group_by(func.cube(self.user.name, self.user.fullname))
         with pytest.raises(Exception) as e_info:
             with Session(self.engine) as session:
@@ -352,7 +366,7 @@ class TestOrmDto(TestBaseOrm):
 
     def test_concat_not_supported(self):
 
-        stmt = select(func.concat('a', 'b'))
+        stmt = select(func.concat("a", "b"))
         with pytest.raises(Exception) as e_info:
             with Session(self.engine) as session:
                 session.execute(stmt)
@@ -397,7 +411,7 @@ class TestOrmDto(TestBaseOrm):
 
         test_cte = select(
             self.user.name,
-            func.sum(self.user.id).label('total_ids')
+            func.sum(self.user.id).label("total_ids"),
         ).group_by(self.user.name).cte("test_cte")
 
         stmt = select(test_cte)
@@ -405,7 +419,7 @@ class TestOrmDto(TestBaseOrm):
         with Session(self.engine) as session:
             result = session.execute(stmt).all()
 
-        assert ('patrick', 3) == result[0], f"expected to get {('patrick', 3)}, got {result[0]}"
+        assert result[0] == ("patrick", 3), f"expected to get {('patrick', 3)}, got {result[0]}"
 
     # sql.expression
     def test_true(self):
