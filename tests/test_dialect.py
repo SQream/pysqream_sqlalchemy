@@ -10,11 +10,10 @@ import pandas as pd
 import pytest
 import sqlalchemy as sa
 from sqlalchemy import create_engine, select, Table, Column, insert, text, DDL, orm, Identity, BigInteger, MetaData, engine
-from test_base import TestBase, Logger, TestBaseTI
+from alembic.operations import Operations
 from alembic.runtime.migration import MigrationContext
-from sqlalchemy import DDL, Column, Table, create_engine, insert, orm, select, text
+from tests.test_base import TestBase, Logger, TestBaseTI
 
-from tests.test_base import Logger, TestBase, TestBaseTI
 
 # Registering dialect
 sa.dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
