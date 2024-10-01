@@ -1,15 +1,20 @@
-import os
-import sys
-sys.path.insert(0, 'pysqream_sqlalchemy')
-sys.path.insert(0, 'tests')
+
 import pytest
 import sqlalchemy as sa
-from test_base import TestBaseOrm
-from sqlalchemy import select, dialects, Table, Column, Identity, ForeignKey, update, delete
+from sqlalchemy import (
+    Column,
+    ForeignKey,
+    Identity,
+    Table,
+    delete,
+    dialects,
+    select,
+    update,
+)
 from sqlalchemy.orm import Session
+from tests.test_base import TestBaseOrm
 
-
-dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
+dialects.registry.register("pysqream.dialect", "pysqream_sqlalchemy.dialect", "SqreamDialect")
 
 
 class TestOrmDao(TestBaseOrm):
@@ -22,8 +27,8 @@ class TestOrmDao(TestBaseOrm):
 
     def test_create_table_with_identity(self):
         table3 = Table(
-            'table3', self.metadata,
-            Column("id", sa.Integer, Identity(start=0)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+            "table3", self.metadata,
+            Column("id", sa.Integer, Identity(start=0)), Column("name", sa.UnicodeText), Column("value", sa.Integer),
         )
         if self.insp.has_table(table3.name):
             table3.drop(bind=self.engine)
@@ -31,8 +36,8 @@ class TestOrmDao(TestBaseOrm):
 
     def test_create_table_with_identity_minvalue_not_supported(self):
         table3 = Table(
-            'table3', self.metadata,
-            Column("id", sa.Integer, Identity(start=1, minvalue=1)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+            "table3", self.metadata,
+            Column("id", sa.Integer, Identity(start=1, minvalue=1)), Column("name", sa.UnicodeText), Column("value", sa.Integer),
         )
         if self.insp.has_table(table3.name):
             table3.drop(bind=self.engine)
@@ -44,8 +49,8 @@ class TestOrmDao(TestBaseOrm):
 
     def test_create_table_with_identity_maxvalue_not_supported(self):
         table3 = Table(
-            'table3', self.metadata,
-            Column("id", sa.Integer, Identity(start=1, maxvalue=10)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+            "table3", self.metadata,
+            Column("id", sa.Integer, Identity(start=1, maxvalue=10)), Column("name", sa.UnicodeText), Column("value", sa.Integer),
         )
         if self.insp.has_table(table3.name):
             table3.drop(bind=self.engine)
@@ -57,8 +62,8 @@ class TestOrmDao(TestBaseOrm):
 
     def test_create_table_with_identity_nomaxvalue_not_supported(self):
         table3 = Table(
-            'table3', self.metadata,
-            Column("id", sa.Integer, Identity(start=1, nomaxvalue=10)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+            "table3", self.metadata,
+            Column("id", sa.Integer, Identity(start=1, nomaxvalue=10)), Column("name", sa.UnicodeText), Column("value", sa.Integer),
         )
         if self.insp.has_table(table3.name):
             table3.drop(bind=self.engine)
@@ -70,8 +75,8 @@ class TestOrmDao(TestBaseOrm):
 
     def test_create_table_with_identity_nominvalue_not_supported(self):
         table3 = Table(
-            'table3', self.metadata,
-            Column("id", sa.Integer, Identity(start=1, nominvalue=10)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+            "table3", self.metadata,
+            Column("id", sa.Integer, Identity(start=1, nominvalue=10)), Column("name", sa.UnicodeText), Column("value", sa.Integer),
         )
         if self.insp.has_table(table3.name):
             table3.drop(bind=self.engine)
@@ -83,8 +88,8 @@ class TestOrmDao(TestBaseOrm):
 
     def test_create_table_with_identity_cache_not_supported(self):
         table3 = Table(
-            'table3', self.metadata,
-            Column("id", sa.Integer, Identity(start=1, cache=5)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+            "table3", self.metadata,
+            Column("id", sa.Integer, Identity(start=1, cache=5)), Column("name", sa.UnicodeText), Column("value", sa.Integer),
         )
         if self.insp.has_table(table3.name):
             table3.drop(bind=self.engine)
@@ -96,8 +101,8 @@ class TestOrmDao(TestBaseOrm):
 
     def test_create_table_with_identity_order_not_supported(self):
         table3 = Table(
-            'table3', self.metadata,
-            Column("id", sa.Integer, Identity(start=1, order=True)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+            "table3", self.metadata,
+            Column("id", sa.Integer, Identity(start=1, order=True)), Column("name", sa.UnicodeText), Column("value", sa.Integer),
         )
         if self.insp.has_table(table3.name):
             table3.drop(bind=self.engine)
@@ -109,8 +114,8 @@ class TestOrmDao(TestBaseOrm):
 
     def test_create_table_with_identity_cycle_not_supported(self):
         table3 = Table(
-            'table3', self.metadata,
-            Column("id", sa.Integer, Identity(start=1, cycle=6)), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+            "table3", self.metadata,
+            Column("id", sa.Integer, Identity(start=1, cycle=6)), Column("name", sa.UnicodeText), Column("value", sa.Integer),
         )
         if self.insp.has_table(table3.name):
             table3.drop(bind=self.engine)
@@ -122,8 +127,8 @@ class TestOrmDao(TestBaseOrm):
 
     def test_foreign_key_not_supported(self):
         table3 = Table(
-            'table3', self.metadata,
-            Column("id", sa.Integer, ForeignKey("table1.id")), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+            "table3", self.metadata,
+            Column("id", sa.Integer, ForeignKey("table1.id")), Column("name", sa.UnicodeText), Column("value", sa.Integer),
         )
         if self.insp.has_table(table3.name):
             table3.drop(bind=self.engine)
@@ -135,8 +140,8 @@ class TestOrmDao(TestBaseOrm):
 
     def test_primary_key_not_supported(self):
         table3 = Table(
-            'table3', self.metadata,
-            Column("id", sa.Integer, primary_key=True), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+            "table3", self.metadata,
+            Column("id", sa.Integer, primary_key=True), Column("name", sa.UnicodeText), Column("value", sa.Integer),
         )
         if self.insp.has_table(table3.name):
             table3.drop(bind=self.engine)

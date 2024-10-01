@@ -1,33 +1,37 @@
 import socket
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
-from random import choice, randint, choices
+from random import choice, choices, randint
 from typing import Union
 
 import pytest
 import sqlalchemy as sa
-from sqlalchemy import (text,
-                        Table,
-                        Column,
-                        orm,
-                        Integer,
-                        Boolean,
-                        Date,
-                        DateTime,
-                        Numeric,
-                        Text,
-                        create_engine,
-                        MetaData,
-                        Identity,
-                        Connection)
-from sqlalchemy.orm import declarative_base, Session
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Connection,
+    Date,
+    DateTime,
+    Identity,
+    Integer,
+    MetaData,
+    Numeric,
+    Table,
+    Text,
+    create_engine,
+    orm,
+    text,
+)
+from sqlalchemy.dialects import registry
+from sqlalchemy.orm import Session, declarative_base
 
-from pytest_logger import Logger
+from tests.pytest_logger import Logger
 
 
 def connect(ip, port, clustered=False, use_ssl=False):
     print_echo = False
     conn_str = f"pysqream+dialect://sqream:sqream@{ip}:{port}/master"
+    registry.register("pysqream.dialect", "pysqream_sqlalchemy.dialect", "SqreamDialect")
     engine = create_engine(conn_str, echo=print_echo, connect_args={"clustered": clustered, "use_ssl": use_ssl})
     sa.Tinyint = engine.dialect.Tinyint
     session = orm.sessionmaker(bind=engine)()
@@ -41,11 +45,11 @@ def setTinyint(engine):
 
 
 class TestBase:
-    @pytest.fixture()
+    @pytest.fixture
     def ip(self, pytestconfig):
         return pytestconfig.getoption("ip")
 
-    @pytest.fixture()
+    @pytest.fixture
     def port(self, pytestconfig):
         return pytestconfig.getoption("port")
 
@@ -71,7 +75,7 @@ class TestBase:
 
 
 class TestBaseOrm(TestBase):
-    @pytest.fixture()
+    @pytest.fixture
     def ip(self, pytestconfig):
         return pytestconfig.getoption("ip")
     
@@ -79,27 +83,27 @@ class TestBaseOrm(TestBase):
     def port(self, pytestconfig):
         return pytestconfig.getoption("port")
 
-    @pytest.fixture()
+    @pytest.fixture
     def Base(self, pytestconfig):
         return self.Base
 
-    @pytest.fixture()
+    @pytest.fixture
     def user(self):
         return self.user
 
-    @pytest.fixture()
+    @pytest.fixture
     def address(self):
         return self.address
 
-    @pytest.fixture()
+    @pytest.fixture
     def dates(self):
         return self.dates
 
-    @pytest.fixture()
+    @pytest.fixture
     def table1(self):
         return self.table1
 
-    @pytest.fixture()
+    @pytest.fixture
     def table2(self):
         return self.table2
 
@@ -143,13 +147,13 @@ class TestBaseOrm(TestBase):
         self.start(ip, port)
 
         self.table1 = Table(
-            'table1', self.metadata,
-            Column("id", sa.Integer), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+            "table1", self.metadata,
+            Column("id", sa.Integer), Column("name", sa.UnicodeText), Column("value", sa.Integer),
         )
 
         self.table2 = Table(
-            'table2', self.metadata,
-            Column("id", sa.Integer), Column("name", sa.UnicodeText), Column("value", sa.Integer)
+            "table2", self.metadata,
+            Column("id", sa.Integer), Column("name", sa.UnicodeText), Column("value", sa.Integer),
         )
 
         yield
@@ -157,11 +161,11 @@ class TestBaseOrm(TestBase):
 
 
 class TestBaseTI(TestBase):
-    @pytest.fixture()
+    @pytest.fixture
     def ip(self, pytestconfig):
         return pytestconfig.getoption("ip")
 
-    @pytest.fixture()
+    @pytest.fixture
     def testware_affinity_matrix(self):
         return self.testware_affinity_matrix
 
@@ -170,17 +174,17 @@ class TestBaseTI(TestBase):
         self.start(ip, port)
 
         self.testware_affinity_matrix = sa.Table(
-            'testware_affinity_matrix',
+            "testware_affinity_matrix",
             self.metadata,
-            sa.Column('technology', sa.TEXT(32)),
-            sa.Column('criteria', sa.TEXT(32)),
-            sa.Column('category', sa.TEXT(32)),
-            sa.Column('component', sa.TEXT(32)),
-            sa.Column('svn', sa.TEXT(32)),
-            sa.Column('parm_name', sa.TEXT(32)),
-            sa.Column('lpt', sa.TEXT(32)),
-            sa.Column('tech', sa.TEXT(32)),
-            sa.Column('severity', sa.Float)
+            sa.Column("technology", sa.TEXT(32)),
+            sa.Column("criteria", sa.TEXT(32)),
+            sa.Column("category", sa.TEXT(32)),
+            sa.Column("component", sa.TEXT(32)),
+            sa.Column("svn", sa.TEXT(32)),
+            sa.Column("parm_name", sa.TEXT(32)),
+            sa.Column("lpt", sa.TEXT(32)),
+            sa.Column("tech", sa.TEXT(32)),
+            sa.Column("severity", sa.Float),
         )
 
         if self.insp.has_table(self.testware_affinity_matrix.name):
@@ -193,7 +197,7 @@ class TestBaseTI(TestBase):
 
 
 class TestBaseCRUD(TestBase):
-    database_name = schema_name = table_name = 'crud'
+    database_name = schema_name = table_name = "crud"
     view_name = "view_for_crud"
 
     @staticmethod
@@ -228,19 +232,19 @@ class TestBaseCRUD(TestBase):
         return Table(
             self.table_name,
             self.metadata,
-            Column('i', Integer),
-            Column('b', Boolean),
-            Column('d', Date),
-            Column('dt', DateTime),
-            Column('n', Numeric(15, 6)),
-            Column('t', Text),
+            Column("i", Integer),
+            Column("b", Boolean),
+            Column("d", Date),
+            Column("dt", DateTime),
+            Column("n", Numeric(15, 6)),
+            Column("t", Text),
             # Column('iar', ARRAY(Integer)),
             # Column('bar', ARRAY(Boolean)),
             # Column('dar', ARRAY(Date)),
             # Column('dtar',ARRAY(DateTime)),
             # Column('nar', ARRAY(Numeric(15, 6))),
             # Column('tar', ARRAY(Text)),
-            extend_existing=True
+            extend_existing=True,
         )
 
     @staticmethod
@@ -256,7 +260,7 @@ class TestBaseCRUD(TestBase):
                      minute=randint(1, 59),
                      second=randint(1, 59)),
             Decimal(f"{randint(int(1e8), int(9e8))}.{randint(int(1e5), int(9e5))}"),
-            "".join(choices("ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=randint(5, 50)))
+            "".join(choices("ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=randint(5, 50))),
         )
 
     def recreate_all_via_metadata(self, executor: Union[Connection, Session] = None):
