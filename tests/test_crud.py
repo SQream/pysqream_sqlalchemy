@@ -228,22 +228,6 @@ class TestRead(TestBaseCRUD):
 
         assert len(result1) == expected_result == len(result2)
 
-    # def test_read_from_table_parametrized(self, crud_table):
-    #     self.recreate_all_via_metadata()
-    #
-    #     self.insert_values_into_table(crud_table, rows_amount=10)
-    #
-    #     # Write the select query using SQLAlchemy
-    #     query = select([crud_table.c.i]).where(crud_table.c.i == text(":value"))
-    #
-    #     # Execute the query with parameter binding
-    #     result = connection.execute(query, value=123)  # Replace 123 with actual value
-    #
-    #     # Fetch and print results
-    #     for row in result:
-    #         print(row['i'])
-
-
     @pytest.mark.parametrize(
         ("statement", "expected_result"),
         (
