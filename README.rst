@@ -9,6 +9,7 @@ Prerequisites
 * Python == 3.9
 * SQLAlchemy == 2.0.27
 * SQream DB-API Connector == 3.2.5
+* SQLite
 * Cython (optional - improves performance)
 
 Installing SQream SQLAlchemy
@@ -25,7 +26,7 @@ Verifying Installation
 
     import sqlalchemy as sa
     import pandas as pd
-    from sqlalchemy import text
+    from sqlalchemy import text, orm
 
 
     conn_str = "sqream://sqream:sqream@localhost:3108/master"                                                  
