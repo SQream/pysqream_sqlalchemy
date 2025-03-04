@@ -35,7 +35,7 @@ def find_diff(df1: pd.DataFrame, df2: pd.DataFrame):
 
 
 class TestSqlalchemy(TestBase):
-    def test_sqlalchemy(self):
+    def test_sqlalchemy_direct(self):
         Logger().info('SQLAlchemy direct query tests')
         # Test 0 - as bestowed upon me by Yuval. Using the URL object directly instead of a connection string
         sa.dialects.registry.register("pysqream.dialect", "dialect", "SqreamDialect")
@@ -48,8 +48,11 @@ class TestSqlalchemy(TestBase):
         engine2 = create_engine(manual_conn_str)
         session2 = orm.sessionmaker(bind=engine2)()
         res = session2.execute(DDL('select 1'))
+        engine2.dispose()
+        session2.close()
         assert (all(row[0] == 1 for row in res))
 
+    def test_sqlalchemy(self):
         # Simple direct Engine query - this passes the queries to the underlying DB-API
         self.session.execute(DDL('create or replace table "kOko" ("iNts fosho" int not null)'))
         self.session.execute(DDL('insert into "kOko" values (1),(2),(3),(4),(5)'))

@@ -67,6 +67,7 @@ class TestBase:
 
     def stop(self):
         Logger().info("After Scenario")
+        self.session.close()
         self.engine.dispose()
 
 
