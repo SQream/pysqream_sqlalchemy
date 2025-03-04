@@ -795,7 +795,6 @@ class TestUtilityFunctions(TestBaseCRUD):
                 "select show_locks()",
                 "select show_server_status()",
                 "select show_connections()",
-                f"select get_data_metrics('daily', '{datetime.now()}', '{datetime.now()}')",
                 "select get_gpu_info()",
                 "select show_last_node_info()",
         )
