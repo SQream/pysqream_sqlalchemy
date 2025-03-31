@@ -210,13 +210,25 @@ class SqreamDialect(DefaultDialect):
 
     # TODO - add to readme - commit not supported
     def do_commit(self, connection):
-        connection.commit()
-        # raise NotSupportedException("commit are not supported by SQream")
+        """
+        Attempt to commit; ignore if not supported.
+        """
+
+        try:
+            connection.commit()
+        except NotImplementedError:
+            pass  # Ignore, since SQreamDB does not support transactions
 
     # TODO - add to readme - rollback not supported
     def do_rollback(self, connection):
-        connection.rollback()
-        # raise NotSupportedException("rollback are not supported by SQream")
+        """
+        Attempt to rollback; ignore if not supported.
+        """
+
+        try:
+            connection.rollback()
+        except NotImplementedError:
+            pass  # Ignore, since SQreamDB does not support transactions
 
 
 class NotSupportedException(Exception):
