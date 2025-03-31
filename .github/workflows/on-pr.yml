@@ -1,0 +1,74 @@
+name: Pull request to master
+
+concurrency:
+  group: pull-request-${{github.head_ref}}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    branches: ['master']
+  workflow_dispatch:
+
+jobs:
+  calculate-containers-image:
+    runs-on: ubuntu-latest
+    outputs:
+      sqreamdb-image: ${{steps.find-sqream-tag.outputs.container-image}}
+
+    steps:
+      - uses: sqream/gha-find-latest-image-tag@main
+        id: find-sqream-tag
+        with:
+          container-repository: ${{vars.SQREAM_GCR_DEVELOP_REGISTRY}}/sqreamdb
+          git-repository: sqream/sqream
+          git-ref: develop
+          gcp-cicd-secret: ${{secrets.GCP_CI_CD_SECRET}}
+          git-token: ${{secrets.CICD_MACHINE_SQREAM_REPO_READER}}
+
+  test:
+    needs: [ calculate-containers-image ]
+    runs-on: [self-hosted, op, gpu, ubuntu]
+
+    steps:
+      - name: Create Docker network
+        run: |
+          docker network rm sqream-network || true
+          docker network create sqream-network
+
+      - name: Clean workspace
+        run: |
+          sudo find /home/gh-runner/actions-runner/_work/pysqream/pysqream \( -name "__pycache__" -o -name ".pytest_cache" \) -exec rm -rf {} + || true
+          sudo rm -rf /home/gh-runner/actions-runner/_work/pysqream/pysqream/.github/assets/sqreamd_config_legacy.json || true
+
+      - name: Checkout pysqream
+        uses: actions/checkout@v4
+        with:
+          token: ${{secrets.CICD_MACHINE_SQREAM_REPO_READER}}
+
+      - name: Pull and run SQreamDB container
+        run: |
+          echo "Pulling SQreamDB image: ${{needs.calculate-containers-image.outputs.sqreamdb-image}}"
+          docker run --rm -d --name sqreamdb \
+          --mac-address="02:42:2F:C1:DB:DD" --runtime=nvidia --gpus all -p 5000:5000 -p 3108:3108 -p 3109:3109 \
+          -v ${PWD}/.github/assets/sqreamd_config_legacy.json:/sqream/config/sqreamd_config_legacy.json:ro \
+          ${{needs.calculate-containers-image.outputs.sqreamdb-image}} cluster
+
+      - name: Run pysqream tests in Docker
+        run: |
+          docker run --rm \
+          --network host \
+          -v ${{ github.workspace }}:/app \
+          -w /app \
+          python:3.9 \
+          bash -c "pip install --upgrade pip && pip install -r requirements.txt && python -m pytest ./tests/ -v --maxfail=10 --ip=127.0.0.1 --port=3108"
+
+      - name: Cleanup Docker resources
+        if: ${{ always() }}
+        run: |
+          echo "Stopping and removing all containers..."
+          docker stop sqreamdb || true
+          echo "Removing Docker images forcefully"
+          docker rmi ${{needs.calculate-containers-image.outputs.sqreamdb-image}} -f || true
+          echo "Removing Docker network"
+          docker network rm sqream-network || true
+          echo "Docker cleanup completed"

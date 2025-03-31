@@ -1,0 +1,13 @@
+{
+  "developerMode": true,
+  "diskSpaceMinFreePercent": 5,
+  "insertCompressors": 8,
+  "insertParsers": 8,
+  "maxChunkSizeFactor": 2,
+  "reextentUse": true,
+  "showFullExceptionInfo": true,
+  "ssl": false,
+  "useClientLog": true,
+  "useMetadataServer": true,
+  "waitForClientSeconds": 300
+}
